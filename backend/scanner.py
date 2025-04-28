@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import concurrent.futures
 import re
+from urllib.parse import urljoin, urlparse
 
 # TOR 네트워크를 활용하기 위한 프록시 설정 (다크웹 모드)
 PROXIES = {
@@ -158,71 +159,26 @@ class MultiWebScanner:
             else:
                 print("  요청 실패")
 
-def main():
-    """
-    실행 모드에 따라 다크웹과 일반 웹을 선택할 수 있습니다.
-    
-    1. **일반 웹 스캔 방법:**
-       - mode를 'normal'로 설정합니다.
-       - target_url에 예) "http://testphp.vulnweb.com" 등을 지정합니다.
-       - TOR 프록시 없이 일반 네트워크로 접속합니다.
-       
-    2. **다크웹 스캔 방법:**
-       - mode를 'darkweb'으로 설정합니다.
-       - target_url에 .onion URL (예: "http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion")을 지정합니다.
-       - TOR 네트워크가 구동 중이어야 하며, 해당 환경에서 프록시 설정(PROXIES)이 적용됩니다.
-    """
-    # 실행 모드를 설정: 'normal' 또는 'darkweb'
-    mode = 'darkweb'  # 다크웹 스캔을 원하면 'darkweb'으로 변경하세요.
-    
-    # 모드에 따라 대상 URL 설정
-    if mode == 'darkweb':
-        target_url = "http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion"
-    else:
-        target_url = "http://testphp.vulnweb.com"
-
-    # PHP 기반 사이트에서 자주 쓰이는 URL 경로를 포함하는 딕셔너리 목록
-    directory_list = ["admin", "backup", "config", "logs", "test", "phpmyadmin", "wp-admin"]
-
-    scanner = MultiWebScanner(target_url, directory_list, mode=mode)
-    
-    # 재귀 크롤링 실행 (최대 깊이 조절: 여기서는 2로 설정)
-    visited = set()
-    max_depth = 2
-    scanner.crawl_recursive(scanner.target_url, visited, depth=0, max_depth=max_depth)
-    
-    # 스캔 결과 출력
-    scanner.report()
-
-if __name__ == "__main__":
-    main()
+    def run(self, max_depth=2):
+        """
+        스캐너를 실행하는 함수. 외부에서 호출할 수 있도록 함.
+        """
+        visited = set()
+        self.crawl_recursive(self.target_url, visited, depth=0, max_depth=max_depth)
+        return self.found_directories
 
 
 '''
-이 코드는 초기화 시 모드(mode) 매개변수로 'normal' 또는 'darkweb'를 지정할 수 있습니다.
-
-모드를 'normal'로 설정하면 일반 웹 환경에서 동작하며, 프록시 없이 요청을 보냅니다.
-
-모드를 'darkweb'으로 설정하면 TOR 프록시 설정을 적용하여 다크웹(.onion) URL이나 그 외 다크웹 환경에서 사용할 수 있습니다.
-
-
 일반 웹 스캔:
-
 위 코드에서 mode 변수를 'normal'로 설정합니다.
-
 target_url에 일반 웹 사이트 URL (예: http://testphp.vulnweb.com)을 지정하고 실행하면, TOR 프록시 없이 기본 네트워크 환경에서 크롤링, PHP 감지 및 딕셔너리 스캔이 이루어집니다.
-
 다크웹 스캔:
-
 위 코드에서 mode 변수를 'darkweb'으로 설정합니다.
-
 target_url에 .onion 주소 (예: http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion)를 지정합니다.
-
 이때, TOR 네트워크(예: Tor 서비스 또는 TOR 브라우저의 프록시)가 반드시 활성화되어 있어야 하며, 코드에서는 프로시 설정이 적용되어 다크웹 사이트에 접속할 수 있습니다.
 
 1. 일반웹, 다크웹 둘 다에 대해서 크롤링 및 디렉토리 리스팅을 시도하는가?
 2. 재귀적으로 링크를 추출해서 추출한 사이트들에도 동일하게 크롤링 및 디렉토리 리스팅을 시도하는가?
 3. 재귀적인 작업의 depth가 지정되어 있는가?
 4. html및  server header, x-powered-by 등을 분석해서 프레임워크를 파악하고, php인 경우에 디렉토리 리스팅을 시도하는가?
-
 '''
