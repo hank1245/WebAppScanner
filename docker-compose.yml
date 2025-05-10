@@ -7,6 +7,10 @@ services:
     ports:
       - "8000:8000"
     container_name: directory_scanner_backend
+    depends_on:
+      - torproxy
+    networks:
+      - app-network
 
   frontend:
     build:
@@ -15,6 +19,21 @@ services:
       - "3000:3000"
     container_name: directory_scanner_frontend
     environment:
-      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_API_URL=http://backend:8000
     depends_on:
       - backend
+    networks:
+      - app-network
+
+  torproxy:
+    image: dperson/torproxy
+    container_name: directory_scanner_torproxy
+    ports:
+      - "9050:9050"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+networks:
+  app-network:
+    driver: bridge

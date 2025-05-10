@@ -7,8 +7,8 @@ from urllib.parse import urljoin, urlparse
 
 # TOR 네트워크를 활용하기 위한 프록시 설정 (다크웹 모드)
 PROXIES = {
-    'http': 'socks5h://127.0.0.1:9050',
-    'https': 'socks5h://127.0.0.1:9050'
+    'http': 'socks5h://torproxy:9050',  # 127.0.0.1 -> torproxy
+    'https': 'socks5h://torproxy:9050' # 127.0.0.1 -> torproxy
 }
 
 # 일반적인 브라우저 User-Agent 헤더
