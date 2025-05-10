@@ -19,9 +19,9 @@ HEADERS = {
 }
 
 class MultiWebScanner:
-    def __init__(self, target_url, dictionary, mode='normal'):
+    def __init__(self, target_url, dictionary, mode='normal', exclusions=None): # Add exclusions parameter
         """
-        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb')를 입력받습니다.
+        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록을 입력받습니다.
         모드가 'darkweb'이면 TOR 프록시를 적용합니다.
         """
         self.target_url = target_url.rstrip('/')
@@ -30,15 +30,33 @@ class MultiWebScanner:
         self.found_directories = {}
         self.dictionary_scanned = set()  # 이미 딕셔너리 스캔을 수행한 URL 목록
         self.mode = mode
+        self.exclusions = set(exclusions) if exclusions else set() # Store exclusions as a set for efficient lookup
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
         if self.mode == 'darkweb':
             self.session.proxies = PROXIES
 
+    def is_excluded(self, url):
+        """
+        주어진 URL 또는 도메인이 제외 목록에 있는지 확인합니다.
+        """
+        parsed_url = urlparse(url)
+        # Check full URL
+        if url in self.exclusions:
+            return True
+        # Check domain/IP
+        if parsed_url.netloc in self.exclusions:
+            return True
+        return False
+
     def fetch_url(self, url, timeout=10):
         """
         URL에 GET 요청을 보내고, 실패 시 None을 반환합니다.
+        제외 목록에 있는 URL은 요청하지 않습니다.
         """
+        if self.is_excluded(url):
+            print(f"[-] 제외된 URL: {url}")
+            return None
         try:
             response = self.session.get(url, timeout=timeout)
             return response
@@ -73,10 +91,15 @@ class MultiWebScanner:
     def dictionary_scan_single(self, base_url, dir_name):
         """
         주어진 base_url과 딕셔너리 항목을 조합하여 URL을 요청한 후,
-        디렉토리 리스팅 여부와 상태 코드를 확인합니다.
+        디렉토리 리스팅 여부와 상태 코드를 확인.
+        제외된 URL은 스캔하지 않음.
         """
         url = f"{base_url.rstrip('/')}/{dir_name.lstrip('/')}"
-        response = self.fetch_url(url)
+        if self.is_excluded(url):
+            print(f"[-] 딕셔너리 스캔에서 제외된 URL: {url}")
+            return url, None
+
+        response = self.fetch_url(url) # fetch_url will also check exclusion
         if response:
             status_code = response.status_code
             content_length = len(response.content)
@@ -93,7 +116,7 @@ class MultiWebScanner:
 
     def dictionary_scan(self, base_url):
         """
-        주어진 base_url에 대해 딕셔너리 목록으로 디렉토리 존재 여부를 멀티스레딩으로 스캔합니다.
+        주어진 base_url에 대해 딕셔너리 목록으로 디렉토리 존재 여부를 멀티스레딩으로 스캔.
         """
         print(f"[+] 딕셔너리 스캔 시작: {base_url}")
         results = {}
@@ -116,10 +139,15 @@ class MultiWebScanner:
         """
         재귀적으로 내부 링크를 방문하며 각 페이지에서 PHP 여부를 분석하고,
         PHP 기반 페이지이면 딕셔너리 스캔을 진행합니다.
+        제외된 URL은 크롤링하지 않습니다.
         """
         if depth > max_depth:
             return
         if current_url in visited:
+            return
+        
+        if self.is_excluded(current_url):
+            print(f"[-] 크롤링에서 제외된 URL: {current_url}")
             return
 
         print(f"[+] 크롤링 (Depth: {depth}) : {current_url}")
@@ -140,17 +168,14 @@ class MultiWebScanner:
             full_url = urljoin(current_url, href)
             parsed = urlparse(full_url)
             if parsed.netloc == self.base_domain and parsed.scheme in ['http', 'https']:
-                if full_url not in visited:
+                if full_url not in visited and not self.is_excluded(full_url): # Check exclusion before adding to links
                     links.append(full_url)
 
         for link in links:
-            if link not in visited:
+            if link not in visited: # Redundant check if already done above, but safe
                 self.crawl_recursive(link, visited, depth + 1, max_depth)
 
     def report(self):
-        """
-        스캔된 딕셔너리 결과를 출력합니다.
-        """
         print("\n[+] 스캔 결과 보고:")
         for url, info in self.found_directories.items():
             print(f"URL: {url}")
@@ -160,25 +185,6 @@ class MultiWebScanner:
                 print("  요청 실패")
 
     def run(self, max_depth=2):
-        """
-        스캐너를 실행하는 함수. 외부에서 호출할 수 있도록 함.
-        """
         visited = set()
         self.crawl_recursive(self.target_url, visited, depth=0, max_depth=max_depth)
         return self.found_directories
-
-
-'''
-일반 웹 스캔:
-위 코드에서 mode 변수를 'normal'로 설정합니다.
-target_url에 일반 웹 사이트 URL (예: http://testphp.vulnweb.com)을 지정하고 실행하면, TOR 프록시 없이 기본 네트워크 환경에서 크롤링, PHP 감지 및 딕셔너리 스캔이 이루어집니다.
-다크웹 스캔:
-위 코드에서 mode 변수를 'darkweb'으로 설정합니다.
-target_url에 .onion 주소 (예: http://duckduckgogg42xjoc72x3sjasowoarfbgcmvfimaftt6twagswzczad.onion)를 지정합니다.
-이때, TOR 네트워크(예: Tor 서비스 또는 TOR 브라우저의 프록시)가 반드시 활성화되어 있어야 하며, 코드에서는 프로시 설정이 적용되어 다크웹 사이트에 접속할 수 있습니다.
-
-1. 일반웹, 다크웹 둘 다에 대해서 크롤링 및 디렉토리 리스팅을 시도하는가?
-2. 재귀적으로 링크를 추출해서 추출한 사이트들에도 동일하게 크롤링 및 디렉토리 리스팅을 시도하는가?
-3. 재귀적인 작업의 depth가 지정되어 있는가?
-4. html및  server header, x-powered-by 등을 분석해서 프레임워크를 파악하고, php인 경우에 디렉토리 리스팅을 시도하는가?
-'''

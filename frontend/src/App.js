@@ -7,10 +7,16 @@ function App() {
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const handleScan = async (targetUrl, mode) => {
+  const handleScan = async (targetUrlList, mode, exclusions, maxDepth) => {
     setLoading(true);
+    setResults({});
     try {
-      const scanResult = await scanWebsite(targetUrl, mode);
+      const scanResult = await scanWebsite(
+        targetUrlList,
+        mode,
+        exclusions,
+        maxDepth
+      );
       setResults(scanResult);
     } catch (error) {
       console.error("스캔 중 오류 발생:", error);
