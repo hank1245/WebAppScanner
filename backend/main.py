@@ -25,6 +25,7 @@ class ScanRequest(BaseModel):
     ]
     exclusions: list[str] = []
     max_depth: int = 2
+    respect_robots_txt: bool = True  # 추가: robots.txt 규칙 준수 여부 설정
 
 @app.post("/scan")
 async def scan(request: ScanRequest):
@@ -35,7 +36,8 @@ async def scan(request: ScanRequest):
                 target_url=target_url_item,
                 dictionary=request.dictionary,
                 mode=request.mode,
-                exclusions=request.exclusions
+                exclusions=request.exclusions,
+                respect_robots_txt=request.respect_robots_txt  # robots.txt 파라미터 전달
             )
             result_item = scanner.run(max_depth=request.max_depth)
             all_results.update(result_item)

@@ -19,10 +19,11 @@ HEADERS = {
 }
 
 class MultiWebScanner:
-    def __init__(self, target_url, dictionary, mode='normal', exclusions=None): # Add exclusions parameter
+    def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True):
         """
         초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록을 입력받습니다.
         모드가 'darkweb'이면 TOR 프록시를 적용합니다.
+        respect_robots_txt: robots.txt의 Disallow 규칙을 따를지 여부
         """
         self.target_url = target_url.rstrip('/')
         self.dictionary = dictionary
@@ -33,12 +34,76 @@ class MultiWebScanner:
         self.exclusions = set(exclusions) if exclusions else set() # Store exclusions as a set for efficient lookup
         self.session = requests.Session()
         self.session.headers.update(HEADERS)
+        self.respect_robots_txt = respect_robots_txt
+        self.robots_disallowed_paths = set()  # 파싱된 robots.txt의 Disallow 경로
+        
         if self.mode == 'darkweb':
             self.session.proxies = PROXIES
+            
+        if self.respect_robots_txt:
+            # 생성자에서 robots.txt 파싱 실행
+            self._parse_robots_txt()
+
+    def _parse_robots_txt(self):
+        """
+        대상 URL의 robots.txt 파일을 파싱하여 Disallow 경로를 추출합니다.
+        """
+        parsed_url = urlparse(self.target_url)
+        robots_url = f"{parsed_url.scheme}://{parsed_url.netloc}/robots.txt"
+        
+        try:
+            print(f"[+] robots.txt 확인: {robots_url}")
+            response = self.session.get(robots_url, timeout=10)
+            if response.status_code != 200:
+                print(f"[-] robots.txt가 없거나 접근할 수 없습니다: {response.status_code}")
+                return
+                
+            lines = response.text.splitlines()
+            current_user_agent = "*"  # 기본은 와일드카드 유저 에이전트
+            
+            for line in lines:
+                line = line.strip()
+                if not line or line.startswith('#'):  # 주석 또는 빈 줄 무시
+                    continue
+                    
+                parts = line.split(':', 1)
+                if len(parts) != 2:
+                    continue
+                    
+                directive = parts[0].strip().lower()
+                value = parts[1].strip()
+                
+                if directive == "user-agent":
+                    current_user_agent = value
+                elif directive == "disallow" and (current_user_agent == "*" or "mozilla" in current_user_agent.lower()):
+                    if value:  # 빈 Disallow는 모든 접근 허용이므로 무시
+                        path = value
+                        # 절대 경로로 변환
+                        disallowed_url = urljoin(f"{parsed_url.scheme}://{parsed_url.netloc}", path)
+                        self.robots_disallowed_paths.add(disallowed_url)
+                        print(f"[+] robots.txt Disallow 경로 추가: {disallowed_url}")
+            
+            print(f"[+] 총 {len(self.robots_disallowed_paths)}개의 Disallow 경로 확인됨")
+        except Exception as e:
+            print(f"[!] robots.txt 파싱 중 오류 발생: {e}")
+
+    def is_disallowed_by_robots(self, url):
+        """
+        URL이 robots.txt의 Disallow 규칙에 해당하는지 확인합니다.
+        """
+        if not self.respect_robots_txt or not self.robots_disallowed_paths:
+            return False
+            
+        for disallowed_path in self.robots_disallowed_paths:
+            if url.startswith(disallowed_path):
+                print(f"[robots.txt] 접근 제한된 URL: {url}")
+                return True
+        return False
 
     def is_excluded(self, url):
         """
         주어진 URL 또는 도메인이 제외 목록에 있는지 확인합니다.
+        또는 robots.txt에 의해 차단되는지 확인합니다.
         """
         parsed_url = urlparse(url)
         # Check full URL
@@ -46,6 +111,9 @@ class MultiWebScanner:
             return True
         # Check domain/IP
         if parsed_url.netloc in self.exclusions:
+            return True
+        # Check robots.txt rules
+        if self.is_disallowed_by_robots(url):
             return True
         return False
 

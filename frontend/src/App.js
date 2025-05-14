@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { scanWebsite } from "./api";
 import ScanForm from "./components/ScanForm";
 import ResultTable from "./components/ResultTable";
+import "./App.css"; // 기본 CSS 파일 사용
 
 // Helper function to download JSON
 const downloadJSON = (data, filename) => {
@@ -11,7 +12,7 @@ const downloadJSON = (data, filename) => {
   const link = document.createElement("a");
   link.href = jsonString;
   link.download = filename;
-  document.body.appendChild(link); // Required for Firefox
+  document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 };
@@ -19,9 +20,15 @@ const downloadJSON = (data, filename) => {
 function App() {
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(false);
-  const [scanMetadata, setScanMetadata] = useState(null); // To store scan settings and timestamps
+  const [scanMetadata, setScanMetadata] = useState(null);
 
-  const handleScan = async (targetUrlList, mode, exclusions, maxDepth) => {
+  const handleScan = async (
+    targetUrlList,
+    mode,
+    exclusions,
+    maxDepth,
+    respectRobotsTxt
+  ) => {
     setLoading(true);
     setResults({});
     const startTime = new Date();
@@ -29,6 +36,7 @@ function App() {
       targets: targetUrlList,
       exclusions: exclusions,
       maxDepth: maxDepth,
+      respectRobotsTxt: respectRobotsTxt,
       startTime: startTime,
       endTime: null,
     });
@@ -38,14 +46,15 @@ function App() {
         targetUrlList,
         mode,
         exclusions,
-        maxDepth
+        maxDepth,
+        respectRobotsTxt
       );
       setResults(scanResult);
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
     } catch (error) {
       console.error("스캔 중 오류 발생:", error);
       alert("스캔에 실패했습니다.");
-      setScanMetadata((prev) => ({ ...prev, endTime: new Date() })); // Also set endTime on error
+      setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
     } finally {
       setLoading(false);
     }
@@ -70,8 +79,9 @@ function App() {
       targets_scanned_count: scanMetadata.targets.length,
       targets_list: scanMetadata.targets,
       max_depth: scanMetadata.maxDepth,
+      respect_robots_txt: scanMetadata.respectRobotsTxt,
       exclusions_list: scanMetadata.exclusions,
-      checked_paths_count: Object.keys(results).length, // Total paths for which backend returned a result
+      checked_paths_count: Object.keys(results).length,
       successful_directories_count: successfulEntries.length,
       successful_directories_list: successfulEntries.map(([url, info]) => ({
         url: url,
@@ -87,31 +97,114 @@ function App() {
     );
   };
 
+  // 스캔 결과 요약 정보 계산
+  const getScanSummary = () => {
+    if (!results || !scanMetadata || !scanMetadata.endTime) return null;
+
+    const successfulEntries = Object.entries(results).filter(
+      ([_, info]) =>
+        info && (info.status_code === 200 || info.status_code === 403)
+    );
+
+    const duration =
+      (scanMetadata.endTime.getTime() - scanMetadata.startTime.getTime()) /
+      1000;
+
+    return {
+      duration: duration.toFixed(2),
+      totalPaths: Object.keys(results).length,
+      successfulPaths: successfulEntries.length,
+      targets: scanMetadata.targets.length,
+    };
+  };
+
+  const scanSummary = getScanSummary();
+
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>📁 디렉토리 스캐너</h1>
-      <ScanForm onScan={handleScan} />
+    <div className="container">
+      <header className="app-header">
+        <h1>📁 디렉토리 스캐너</h1>
+        <p className="app-description">
+          웹사이트 디렉토리를 탐색하고 숨겨진 경로를 검색하는 도구입니다.
+        </p>
+      </header>
+
+      <div className="card">
+        <div className="card-header">
+          <h2>스캔 설정</h2>
+          <p>아래 옵션을 설정하고 스캔을 시작하세요.</p>
+        </div>
+        <div className="card-body">
+          <ScanForm onScan={handleScan} />
+        </div>
+      </div>
+
       {loading ? (
-        <p>스캔 중입니다...⏳</p>
+        <div className="loading-container">
+          <div className="loader"></div>
+          <p>스캔 중입니다. 잠시만 기다려주세요...</p>
+        </div>
       ) : (
         <>
-          {Object.keys(results).length > 0 &&
-            scanMetadata &&
-            scanMetadata.endTime && (
-              <button
-                onClick={generateReport}
-                style={{
-                  marginTop: "10px",
-                  marginBottom: "10px",
-                  padding: "8px 12px",
-                }}
-              >
-                리포트 다운로드 (JSON)
-              </button>
-            )}
-          <ResultTable results={results} />
+          {scanSummary && (
+            <div className="card scan-summary">
+              <div className="card-header">
+                <h2>스캔 결과 요약</h2>
+              </div>
+              <div className="card-body">
+                <div className="summary-grid">
+                  <div className="summary-item">
+                    <span className="summary-label">스캔 대상 수</span>
+                    <span className="summary-value">{scanSummary.targets}</span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="summary-label">검사한 경로 수</span>
+                    <span className="summary-value">
+                      {scanSummary.totalPaths}
+                    </span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="summary-label">발견된 디렉토리 수</span>
+                    <span className="summary-value">
+                      {scanSummary.successfulPaths}
+                    </span>
+                  </div>
+                  <div className="summary-item">
+                    <span className="summary-label">소요 시간</span>
+                    <span className="summary-value">
+                      {scanSummary.duration}초
+                    </span>
+                  </div>
+                </div>
+
+                <button onClick={generateReport} className="btn btn-primary">
+                  <span className="icon">📊</span> 상세 리포트 다운로드
+                </button>
+              </div>
+            </div>
+          )}
+
+          {Object.keys(results).length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <h2>스캔 결과 목록</h2>
+                <p>발견된 디렉토리 목록입니다 (상태 코드 200, 403)</p>
+              </div>
+              <div className="card-body">
+                <ResultTable results={results} />
+              </div>
+            </div>
+          )}
         </>
       )}
+
+      <footer className="app-footer">
+        <p>
+          © 디렉토리 스캐너 by Hank Kim | 타겟 웹사이트에서 스캔 수행 시 법적
+          권한이 필요한지 확인하세요. 법적인 문제 발생시 개발자에게 책임이
+          없습니다.
+        </p>
+      </footer>
     </div>
   );
 }
