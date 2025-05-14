@@ -495,3 +495,91 @@ th.sorted.desc .sort-icon::after {
     width: 100%;
   }
 }
+
+/* 딕셔너리 에디터 스타일 */
+.dictionary-editor {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background-color: var(--secondary-color);
+}
+
+.dictionary-input-group {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1rem;
+}
+
+.dictionary-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.dictionary-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.dictionary-item {
+  display: flex;
+  align-items: center;
+  background-color: #e9ecef;
+  border-radius: 16px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+}
+
+.dictionary-item .btn-close {
+  background: none;
+  border: none;
+  color: var(--text-light);
+  font-size: 1.2rem;
+  margin-left: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.dictionary-item .btn-close:hover {
+  color: var(--danger-color);
+}
+
+.btn-secondary {
+  background-color: var(--text-light);
+  border-color: var(--text-light);
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: var(--text-color);
+  border-color: var(--text-color);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--primary-color);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+  margin-left: 8px;
+}
+
+.empty-message {
+  color: var(--text-light);
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.dictionary-section {
+  margin-top: 1.5rem;
+  border-top: 1px dashed var(--border-color);
+  padding-top: 1.5rem;
+}

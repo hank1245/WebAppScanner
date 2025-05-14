@@ -7,15 +7,56 @@ export const scanWebsite = async (
   mode,
   exclusions,
   maxDepth,
-  respectRobotsTxt
+  respectRobotsTxt,
+  dictionaryOperations,
+  useDefaultDictionary
 ) => {
   const payload = {
     target_urls: targetUrls,
     mode: mode,
     exclusions: exclusions || [],
     max_depth: maxDepth,
-    respect_robots_txt: respectRobotsTxt, // 추가: robots.txt 준수 여부
+    respect_robots_txt: respectRobotsTxt,
+    dictionary_operations: dictionaryOperations || [],
+    use_default_dictionary: useDefaultDictionary,
   };
   const response = await axios.post(`${API_BASE_URL}/scan`, payload);
   return response.data.result;
 };
+
+// 기본 딕셔너리 목록 가져오기 (프론트엔드 상수로 정의)
+export const getDefaultDictionary = () => [
+  "admin/",
+  "backup/",
+  "test/",
+  "dev/",
+  "old/",
+  "logs/",
+  "tmp/",
+  "temp/",
+  "public/",
+  "uploads/",
+  "files/",
+  "downloads/",
+  "data/",
+  "config/",
+  "private/",
+  "web/",
+  "new/",
+  "archive/",
+  ".git/",
+  ".env/",
+  ".svn/",
+  ".htaccess/",
+  ".htpasswd/",
+  ".vscode/",
+  ".idea/",
+  "node_modules/",
+  "vendor/",
+  "build/",
+  "dist/",
+  "out/",
+  "db/",
+  "sql/",
+  "credentials/",
+];

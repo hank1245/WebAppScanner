@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import DictionaryEditor from "./DictionaryEditor";
 
 const ScanForm = ({ onScan }) => {
   const [targetUrlsInput, setTargetUrlsInput] = useState("");
@@ -7,6 +8,10 @@ const ScanForm = ({ onScan }) => {
   const [maxDepth, setMaxDepth] = useState(2);
   const [respectRobotsTxt, setRespectRobotsTxt] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [dictionaryConfig, setDictionaryConfig] = useState({
+    operations: [],
+    useDefault: true,
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -34,12 +39,18 @@ const ScanForm = ({ onScan }) => {
       mode,
       exclusionList,
       parseInt(maxDepth, 10),
-      respectRobotsTxt
+      respectRobotsTxt,
+      dictionaryConfig.operations,
+      dictionaryConfig.useDefault
     );
   };
 
   const toggleHelp = () => {
     setShowHelp(!showHelp);
+  };
+
+  const handleDictionaryChange = (config) => {
+    setDictionaryConfig(config);
   };
 
   return (
@@ -86,6 +97,13 @@ const ScanForm = ({ onScan }) => {
               <h4>제외 목록</h4>
               <p>스캔에서 제외할 도메인이나 URL을 한 줄에 하나씩 입력합니다.</p>
             </div>
+            <div className="help-section">
+              <h4>딕셔너리 설정</h4>
+              <p>
+                스캔할 디렉토리 목록을 편집합니다. 기본 딕셔너리를 사용하거나,
+                사용자 정의 항목을 추가/제거할 수 있습니다.
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -130,8 +148,7 @@ const ScanForm = ({ onScan }) => {
 
           <div className="form-group">
             <label htmlFor="maxDepth">
-              <span className="form-label">최대 깊이</span>
-              <span className="form-hint">크롤링 깊이</span>
+              <span className="form-label">최대 크롤링 깊이</span>
             </label>
             <input
               id="maxDepth"
@@ -155,6 +172,10 @@ const ScanForm = ({ onScan }) => {
               <span>robots.txt 규칙 준수</span>
             </label>
           </div>
+        </div>
+
+        <div className="form-group dictionary-section">
+          <DictionaryEditor onChange={handleDictionaryChange} />
         </div>
 
         <div className="form-group">

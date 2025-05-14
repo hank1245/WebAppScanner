@@ -27,7 +27,9 @@ function App() {
     mode,
     exclusions,
     maxDepth,
-    respectRobotsTxt
+    respectRobotsTxt,
+    dictionaryOperations, // 추가: 딕셔너리 작업
+    useDefaultDictionary // 추가: 기본 딕셔너리 사용 여부
   ) => {
     setLoading(true);
     setResults({});
@@ -39,6 +41,9 @@ function App() {
       respectRobotsTxt: respectRobotsTxt,
       startTime: startTime,
       endTime: null,
+      // 딕셔너리 관련 메타데이터 추가
+      useDefaultDictionary: useDefaultDictionary,
+      dictionaryOperations: dictionaryOperations,
     });
 
     try {
@@ -47,7 +52,9 @@ function App() {
         mode,
         exclusions,
         maxDepth,
-        respectRobotsTxt
+        respectRobotsTxt,
+        dictionaryOperations,
+        useDefaultDictionary
       );
       setResults(scanResult);
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
@@ -89,6 +96,11 @@ function App() {
         content_length: info.content_length,
         directory_listing: info.directory_listing,
       })),
+      // 리포트에 딕셔너리 설정 정보 추가
+      dictionary_settings: {
+        use_default_dictionary: scanMetadata.useDefaultDictionary,
+        dictionary_operations: scanMetadata.dictionaryOperations,
+      },
     };
 
     downloadJSON(
