@@ -1,4 +1,4 @@
-# DirectoryTracer
+# Directory Tracer
 
 **DirectoryTracer** is a web application that discovers hidden directories on websites. This tool is useful for identifying potential security vulnerabilities or exploring publicly accessible paths on both surface web and dark web domains.
 
