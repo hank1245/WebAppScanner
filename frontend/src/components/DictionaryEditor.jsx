@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getDefaultDictionary } from "../api";
+import styles from "../styles/DictionaryEditor.module.css";
 
 const DictionaryEditor = ({ onChange }) => {
   const [dictionaryItems, setDictionaryItems] = useState([]);
@@ -85,49 +86,50 @@ const DictionaryEditor = ({ onChange }) => {
   const visibleItems = showAll ? dictionaryItems : dictionaryItems.slice(0, 10);
 
   return (
-    <div className="dictionary-editor">
-      <h3 className="form-label">Dictionary Settings</h3>
-      <p className="form-hint">Manage the list of directory paths to scan.</p>
+    <div className={styles.dictionaryEditor}>
+      <h3 className={styles.formLabel}>Dictionary Settings</h3>
+      <p className={styles.formHint}>
+        Manage the list of directory paths to scan.
+      </p>
 
-      <div className="form-group checkbox-group">
-        <label className="checkbox-label">
+      <div className={styles.checkboxGroup}>
+        <label className={styles.checkboxLabel}>
           <input
             type="checkbox"
             checked={useDefaultDict}
             onChange={handleDefaultToggle}
-            className="form-checkbox"
+            className={styles.formCheckbox}
           />
           <span>Use Default Dictionary (Recommended)</span>
         </label>
       </div>
 
-      <div className="dictionary-input-group">
+      <div className={styles.dictionaryInputGroup}>
         <input
           type="text"
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
           placeholder="Directory path to add (e.g., admin/)"
-          className="form-control"
-          style={{ flex: 1 }}
+          className={styles.formControl}
         />
         <button
           type="button"
           onClick={handleAddItem}
-          className="btn btn-secondary"
+          className={`${styles.btn} ${styles.btnSecondary}`}
           disabled={!newItem.trim()}
         >
           Add
         </button>
       </div>
 
-      <div className="dictionary-list">
-        <p className="form-hint">
+      <div className={styles.dictionaryList}>
+        <p className={styles.formHint}>
           Current dictionary items: {dictionaryItems.length}
           {dictionaryItems.length > 10 && !showAll && (
             <button
               type="button"
               onClick={() => setShowAll(true)}
-              className="btn-link"
+              className={styles.btnLink}
             >
               Show All
             </button>
@@ -136,22 +138,22 @@ const DictionaryEditor = ({ onChange }) => {
             <button
               type="button"
               onClick={() => setShowAll(false)}
-              className="btn-link"
+              className={styles.btnLink}
             >
               Collapse
             </button>
           )}
         </p>
 
-        <div className="dictionary-items">
+        <div className={styles.dictionaryItems}>
           {visibleItems.length > 0 ? (
             visibleItems.map((item, index) => (
-              <div key={index} className="dictionary-item">
+              <div key={index} className={styles.dictionaryItem}>
                 <span>{item}</span>
                 <button
                   type="button"
                   onClick={() => handleRemoveItem(item)}
-                  className="btn-close"
+                  className={styles.btnClose}
                   aria-label="Remove"
                 >
                   ×
@@ -159,7 +161,7 @@ const DictionaryEditor = ({ onChange }) => {
               </div>
             ))
           ) : (
-            <p className="empty-message">Dictionary items are empty.</p>
+            <p className={styles.emptyMessage}>Dictionary items are empty.</p>
           )}
         </div>
       </div>

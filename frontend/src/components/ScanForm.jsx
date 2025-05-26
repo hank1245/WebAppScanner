@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import DictionaryEditor from "./DictionaryEditor";
 import HelpModal from "./HelpModal";
+import styles from "../styles/ScanForm.module.css";
 
 const ScanForm = ({ onScan }) => {
   const [targetUrlsInput, setTargetUrlsInput] = useState("");
@@ -58,17 +59,21 @@ const ScanForm = ({ onScan }) => {
     <>
       <HelpModal isOpen={showHelp} onClose={toggleHelp} />
 
-      <form onSubmit={handleSubmit} className="scan-form">
-        <div className="form-header">
-          <button type="button" className="help-button" onClick={toggleHelp}>
+      <form onSubmit={handleSubmit} className={styles.scanForm}>
+        <div className={styles.formHeader}>
+          <button
+            type="button"
+            className={styles.helpButton}
+            onClick={toggleHelp}
+          >
             Help
           </button>
         </div>
 
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label htmlFor="targetUrls">
-            <span className="form-label">Target URL List</span>
-            <span className="form-hint">Enter one per line</span>
+            <span className={styles.formLabel}>Target URL List</span>
+            <span className={styles.formHint}>Enter one per line</span>
           </label>
           <textarea
             id="targetUrls"
@@ -76,29 +81,29 @@ const ScanForm = ({ onScan }) => {
             value={targetUrlsInput}
             onChange={(e) => setTargetUrlsInput(e.target.value)}
             rows="3"
-            className="form-control"
+            className={styles.formControl}
           />
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
+        <div className={styles.formRow}>
+          <div className={styles.formGroup}>
             <label htmlFor="scanMode">
-              <span className="form-label">Scan Mode</span>
+              <span className={styles.formLabel}>Scan Mode</span>
             </label>
             <select
               id="scanMode"
               value={mode}
               onChange={(e) => setMode(e.target.value)}
-              className="form-control"
+              className={styles.formControl}
             >
               <option value="normal">Normal</option>
               <option value="darkweb">Darkweb (.onion)</option>
             </select>
           </div>
 
-          <div className="form-group">
+          <div className={styles.formGroup}>
             <label htmlFor="maxDepth">
-              <span className="form-label">Maximum Crawling Depth</span>
+              <span className={styles.formLabel}>Maximum Crawling Depth</span>
             </label>
             <input
               id="maxDepth"
@@ -107,31 +112,35 @@ const ScanForm = ({ onScan }) => {
               onChange={(e) => setMaxDepth(e.target.value)}
               min="0"
               max="5"
-              className="form-control"
+              className={styles.formControl}
             />
           </div>
 
-          <div className="form-group checkbox-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={respectRobotsTxt}
-                onChange={(e) => setRespectRobotsTxt(e.target.checked)}
-                className="form-checkbox"
-              />
-              <span>Respect robots.txt rules</span>
-            </label>
+          <div className={styles.formGroup}>
+            <div className={styles.checkboxGroup}>
+              <label className={styles.checkboxLabel}>
+                <input
+                  type="checkbox"
+                  checked={respectRobotsTxt}
+                  onChange={(e) => setRespectRobotsTxt(e.target.checked)}
+                  className={styles.formCheckbox}
+                />
+                <span>Respect robots.txt rules</span>
+              </label>
+            </div>
           </div>
         </div>
 
-        <div className="form-group dictionary-section">
-          <DictionaryEditor onChange={handleDictionaryChange} />
+        <div className={styles.formGroup}>
+          <div className={styles.dictionarySection}>
+            <DictionaryEditor onChange={handleDictionaryChange} />
+          </div>
         </div>
 
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label htmlFor="exclusions">
-            <span className="form-label">Domains or URLs to Exclude</span>
-            <span className="form-hint">Enter one per line</span>
+            <span className={styles.formLabel}>Domains or URLs to Exclude</span>
+            <span className={styles.formHint}>Enter one per line</span>
           </label>
           <textarea
             id="exclusions"
@@ -139,12 +148,12 @@ const ScanForm = ({ onScan }) => {
             value={exclusions}
             onChange={(e) => setExclusions(e.target.value)}
             rows="2"
-            className="form-control"
+            className={styles.formControl}
           />
         </div>
 
-        <button type="submit" className="btn btn-primary scan-button">
-          <span className="icon">🔍</span> Start Scan
+        <button type="submit" className={styles.scanButton}>
+          <span className={styles.icon}>🔍</span> Start Scan
         </button>
       </form>
     </>

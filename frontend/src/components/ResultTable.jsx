@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import styles from "../styles/ResultTable.module.css";
 
 const ResultTable = ({ results }) => {
   const [sortField, setSortField] = useState("url");
@@ -6,10 +7,10 @@ const ResultTable = ({ results }) => {
 
   if (!results || Object.keys(results).length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">📂</div>
+      <div className={styles.emptyState}>
+        <div className={styles.emptyIcon}>📂</div>
         <p>No scan results yet.</p>
-        <p className="empty-hint">
+        <p className={styles.emptyHint}>
           Enter target URLs in the form above and start scanning.
         </p>
       </div>
@@ -24,10 +25,10 @@ const ResultTable = ({ results }) => {
 
   if (successfulEntries.length === 0) {
     return (
-      <div className="empty-state">
-        <div className="empty-icon">🔍</div>
+      <div className={styles.emptyState}>
+        <div className={styles.emptyIcon}>🔍</div>
         <p>No directories found.</p>
-        <p className="empty-hint">
+        <p className={styles.emptyHint}>
           Scan completed but no accessible directories were discovered.
         </p>
       </div>
@@ -85,50 +86,60 @@ const ResultTable = ({ results }) => {
   };
 
   return (
-    <div className="table-responsive">
-      <table className="result-table">
+    <div className={styles.tableResponsive}>
+      <table className={styles.resultTable}>
         <thead>
           <tr>
             <th
-              className={sortField === "url" ? `sorted ${sortDirection}` : ""}
+              className={
+                sortField === "url"
+                  ? `${styles.sorted} ${styles[sortDirection]}`
+                  : ""
+              }
               onClick={() => handleSort("url")}
             >
               URL
-              <span className="sort-icon"></span>
+              <span className={styles.sortIcon}></span>
             </th>
             <th
               className={
-                sortField === "status" ? `sorted ${sortDirection}` : ""
+                sortField === "status"
+                  ? `${styles.sorted} ${styles[sortDirection]}`
+                  : ""
               }
               onClick={() => handleSort("status")}
             >
               Status Code
-              <span className="sort-icon"></span>
+              <span className={styles.sortIcon}></span>
             </th>
             <th
               className={
-                sortField === "length" ? `sorted ${sortDirection}` : ""
+                sortField === "length"
+                  ? `${styles.sorted} ${styles[sortDirection]}`
+                  : ""
               }
               onClick={() => handleSort("length")}
             >
               Content Length
-              <span className="sort-icon"></span>
+              <span className={styles.sortIcon}></span>
             </th>
             <th
               className={
-                sortField === "listing" ? `sorted ${sortDirection}` : ""
+                sortField === "listing"
+                  ? `${styles.sorted} ${styles[sortDirection]}`
+                  : ""
               }
               onClick={() => handleSort("listing")}
             >
               Directory Listing
-              <span className="sort-icon"></span>
+              <span className={styles.sortIcon}></span>
             </th>
           </tr>
         </thead>
         <tbody>
           {sortedEntries.map(([url, info]) => (
             <tr key={url}>
-              <td className="url-cell">
+              <td className={styles.urlCell}>
                 <a
                   href={url}
                   target="_blank"
@@ -144,9 +155,13 @@ const ResultTable = ({ results }) => {
               <td>{info.content_length.toLocaleString()}</td>
               <td>
                 {info.directory_listing ? (
-                  <span className="badge success">Enabled</span>
+                  <span className={`${styles.badge} ${styles.success}`}>
+                    Enabled
+                  </span>
                 ) : (
-                  <span className="badge neutral">Disabled</span>
+                  <span className={`${styles.badge} ${styles.neutral}`}>
+                    Disabled
+                  </span>
                 )}
               </td>
             </tr>

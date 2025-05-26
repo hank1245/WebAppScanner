@@ -1,10 +1,11 @@
 import React from "react";
+import styles from "../styles/Header.module.css";
 
 const Header = () => {
   return (
-    <header className="app-header">
-      <h1>📁 Directory Scanner</h1>
-      <p className="app-description">
+    <header className={styles.appHeader}>
+      <h1>📁 Directory Tracer</h1>
+      <p className={styles.appDescription}>
         A tool for exploring website directories and discovering hidden paths.
       </p>
     </header>

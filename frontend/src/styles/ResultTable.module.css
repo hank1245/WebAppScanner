@@ -1,0 +1,136 @@
+.tableResponsive {
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.resultTable {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  font-size: 0.9rem;
+}
+
+.resultTable thead {
+  background-color: #34495e;
+  color: white;
+}
+
+.resultTable th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.resultTable th:hover {
+  background-color: #2c3e50;
+}
+
+.resultTable th.sorted {
+  background-color: #2980b9;
+}
+
+.resultTable th.sorted.asc .sortIcon::after {
+  content: " ↑";
+  color: #ecf0f1;
+}
+
+.resultTable th.sorted.desc .sortIcon::after {
+  content: " ↓";
+  color: #ecf0f1;
+}
+
+.sortIcon {
+  margin-left: 0.5rem;
+  opacity: 0.6;
+}
+
+.resultTable td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: middle;
+}
+
+.resultTable tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.resultTable tbody tr:nth-child(even) {
+  background-color: #fdfdfd;
+}
+
+.urlCell {
+  max-width: 300px;
+}
+
+.urlCell a {
+  color: #3498db;
+  text-decoration: none;
+  word-break: break-all;
+  transition: color 0.2s ease;
+}
+
+.urlCell a:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.success {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.badge.neutral {
+  background-color: #e2e3e5;
+  color: #6c757d;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #6c757d;
+}
+
+.emptyIcon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.emptyState p {
+  margin: 0.5rem 0;
+  font-size: 1.1rem;
+}
+
+.emptyHint {
+  font-size: 0.9rem !important;
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .resultTable {
+    font-size: 0.8rem;
+  }
+
+  .resultTable th,
+  .resultTable td {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .urlCell {
+    max-width: 200px;
+  }
+}
