@@ -2,7 +2,10 @@ import React, { useState } from "react";
 import { scanWebsite } from "./api";
 import ScanForm from "./components/ScanForm";
 import ResultTable from "./components/ResultTable";
-import "./App.css"; // 기본 CSS 파일 사용
+import ScanSummary from "./components/ScanSummary";
+import LoadingSpinner from "./components/LoadingSpinner";
+import FormSection from "./components/FormSection";
+import "./App.css";
 
 // Helper function to download JSON
 const downloadJSON = (data, filename) => {
@@ -28,8 +31,8 @@ function App() {
     exclusions,
     maxDepth,
     respectRobotsTxt,
-    dictionaryOperations, // 추가: 딕셔너리 작업
-    useDefaultDictionary // 추가: 기본 딕셔너리 사용 여부
+    dictionaryOperations,
+    useDefaultDictionary
   ) => {
     setLoading(true);
     setResults({});
@@ -41,7 +44,6 @@ function App() {
       respectRobotsTxt: respectRobotsTxt,
       startTime: startTime,
       endTime: null,
-      // 딕셔너리 관련 메타데이터 추가
       useDefaultDictionary: useDefaultDictionary,
       dictionaryOperations: dictionaryOperations,
     });
@@ -59,8 +61,8 @@ function App() {
       setResults(scanResult);
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
     } catch (error) {
-      console.error("스캔 중 오류 발생:", error);
-      alert("스캔에 실패했습니다.");
+      console.error("Error occurred during scan:", error);
+      alert("Scan failed.");
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
     } finally {
       setLoading(false);
@@ -69,7 +71,7 @@ function App() {
 
   const generateReport = () => {
     if (!results || !scanMetadata || !scanMetadata.endTime) {
-      alert("리포트를 생성할 데이터가 없습니다.");
+      alert("No data available to generate report.");
       return;
     }
 
@@ -96,7 +98,6 @@ function App() {
         content_length: info.content_length,
         directory_listing: info.directory_listing,
       })),
-      // 리포트에 딕셔너리 설정 정보 추가
       dictionary_settings: {
         use_default_dictionary: scanMetadata.useDefaultDictionary,
         dictionary_operations: scanMetadata.dictionaryOperations,
@@ -135,86 +136,44 @@ function App() {
   return (
     <div className="container">
       <header className="app-header">
-        <h1>📁 디렉토리 스캐너</h1>
+        <h1>📁 Directory Scanner</h1>
         <p className="app-description">
-          웹사이트 디렉토리를 탐색하고 숨겨진 경로를 검색하는 도구입니다.
+          A tool for exploring website directories and discovering hidden paths.
         </p>
       </header>
 
-      <div className="card">
-        <div className="card-header">
-          <h2>스캔 설정</h2>
-          <p>아래 옵션을 설정하고 스캔을 시작하세요.</p>
-        </div>
-        <div className="card-body">
-          <ScanForm onScan={handleScan} />
-        </div>
-      </div>
+      <FormSection
+        title="Scan Configuration"
+        description="Configure the options below and start scanning."
+      >
+        <ScanForm onScan={handleScan} />
+      </FormSection>
 
       {loading ? (
-        <div className="loading-container">
-          <div className="loader"></div>
-          <p>스캔 중입니다. 잠시만 기다려주세요...</p>
-        </div>
+        <LoadingSpinner message="Scanning in progress. Please wait..." />
       ) : (
         <>
-          {scanSummary && (
-            <div className="card scan-summary">
-              <div className="card-header">
-                <h2>스캔 결과 요약</h2>
-              </div>
-              <div className="card-body">
-                <div className="summary-grid">
-                  <div className="summary-item">
-                    <span className="summary-label">스캔 대상 수</span>
-                    <span className="summary-value">{scanSummary.targets}</span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="summary-label">검사한 경로 수</span>
-                    <span className="summary-value">
-                      {scanSummary.totalPaths}
-                    </span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="summary-label">발견된 디렉토리 수</span>
-                    <span className="summary-value">
-                      {scanSummary.successfulPaths}
-                    </span>
-                  </div>
-                  <div className="summary-item">
-                    <span className="summary-label">소요 시간</span>
-                    <span className="summary-value">
-                      {scanSummary.duration}초
-                    </span>
-                  </div>
-                </div>
-
-                <button onClick={generateReport} className="btn btn-primary">
-                  <span className="icon">📊</span> 상세 리포트 다운로드
-                </button>
-              </div>
-            </div>
-          )}
+          <ScanSummary
+            scanSummary={scanSummary}
+            onGenerateReport={generateReport}
+          />
 
           {Object.keys(results).length > 0 && (
-            <div className="card">
-              <div className="card-header">
-                <h2>스캔 결과 목록</h2>
-                <p>발견된 디렉토리 목록입니다 (상태 코드 200, 403)</p>
-              </div>
-              <div className="card-body">
-                <ResultTable results={results} />
-              </div>
-            </div>
+            <FormSection
+              title="Scan Results"
+              description="List of discovered directories (Status codes 200, 403)"
+            >
+              <ResultTable results={results} />
+            </FormSection>
           )}
         </>
       )}
 
       <footer className="app-footer">
         <p>
-          © 디렉토리 스캐너 by Hank Kim | 타겟 웹사이트에서 스캔 수행 시 법적
-          권한이 필요한지 확인하세요. 법적인 문제 발생시 개발자에게 책임이
-          없습니다.
+          © Directory Scanner by Hank Kim | Please ensure you have legal
+          authorization before scanning target websites. The developer is not
+          responsible for any legal issues that may arise.
         </p>
       </footer>
     </div>

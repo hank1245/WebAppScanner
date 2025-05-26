@@ -7,17 +7,17 @@ const DictionaryEditor = ({ onChange }) => {
   const [useDefaultDict, setUseDefaultDict] = useState(true);
   const [showAll, setShowAll] = useState(false);
 
-  // 컴포넌트 마운트 시 기본 딕셔너리 로드
+  // Load default dictionary when component mounts
   useEffect(() => {
     if (useDefaultDict) {
       setDictionaryItems(getDefaultDictionary());
     }
   }, [useDefaultDict]);
 
-  // 항목 추가
+  // Add item
   const handleAddItem = () => {
     if (newItem.trim()) {
-      // 경로에 / 추가되었는지 확인
+      // Check if path has / at the end
       const formattedItem = newItem.trim().endsWith("/")
         ? newItem.trim()
         : `${newItem.trim()}/`;
@@ -26,7 +26,7 @@ const DictionaryEditor = ({ onChange }) => {
         const updatedItems = [...dictionaryItems, formattedItem];
         setDictionaryItems(updatedItems);
 
-        // 부모 컴포넌트에 변경사항 알림
+        // Notify parent component of changes
         const addOperation = {
           type: "add",
           paths: [formattedItem],
@@ -39,17 +39,17 @@ const DictionaryEditor = ({ onChange }) => {
 
         setNewItem("");
       } else {
-        alert("이미 목록에 존재하는 항목입니다.");
+        alert("This item already exists in the list.");
       }
     }
   };
 
-  // 항목 제거
+  // Remove item
   const handleRemoveItem = (item) => {
     const updatedItems = dictionaryItems.filter((i) => i !== item);
     setDictionaryItems(updatedItems);
 
-    // 부모 컴포넌트에 변경사항 알림
+    // Notify parent component of changes
     const removeOperation = {
       type: "remove",
       paths: [item],
@@ -61,33 +61,33 @@ const DictionaryEditor = ({ onChange }) => {
     });
   };
 
-  // 기본 딕셔너리 사용 여부 토글
+  // Toggle default dictionary usage
   const handleDefaultToggle = () => {
     const newValue = !useDefaultDict;
     setUseDefaultDict(newValue);
 
     if (newValue) {
-      // 기본 딕셔너리 사용으로 전환
+      // Switch to using default dictionary
       setDictionaryItems(getDefaultDictionary());
     } else {
-      // 기본 딕셔너리 사용 중지, 사용자 정의 목록만 사용
+      // Stop using default dictionary, use only custom list
       setDictionaryItems([]);
     }
 
-    // 부모 컴포넌트에 변경사항 알림
+    // Notify parent component of changes
     onChange({
       operations: [],
       useDefault: newValue,
     });
   };
 
-  // 표시할 항목 수 계산
+  // Calculate number of items to display
   const visibleItems = showAll ? dictionaryItems : dictionaryItems.slice(0, 10);
 
   return (
     <div className="dictionary-editor">
-      <h3 className="form-label">딕셔너리 설정</h3>
-      <p className="form-hint">스캔할 디렉토리 경로 목록을 관리합니다.</p>
+      <h3 className="form-label">Dictionary Settings</h3>
+      <p className="form-hint">Manage the list of directory paths to scan.</p>
 
       <div className="form-group checkbox-group">
         <label className="checkbox-label">
@@ -97,7 +97,7 @@ const DictionaryEditor = ({ onChange }) => {
             onChange={handleDefaultToggle}
             className="form-checkbox"
           />
-          <span>기본 딕셔너리 사용 (권장)</span>
+          <span>Use Default Dictionary (Recommended)</span>
         </label>
       </div>
 
@@ -106,7 +106,7 @@ const DictionaryEditor = ({ onChange }) => {
           type="text"
           value={newItem}
           onChange={(e) => setNewItem(e.target.value)}
-          placeholder="추가할 디렉토리 경로 (예: admin/)"
+          placeholder="Directory path to add (e.g., admin/)"
           className="form-control"
           style={{ flex: 1 }}
         />
@@ -116,20 +116,20 @@ const DictionaryEditor = ({ onChange }) => {
           className="btn btn-secondary"
           disabled={!newItem.trim()}
         >
-          추가
+          Add
         </button>
       </div>
 
       <div className="dictionary-list">
         <p className="form-hint">
-          현재 딕셔너리 항목: {dictionaryItems.length}개
+          Current dictionary items: {dictionaryItems.length}
           {dictionaryItems.length > 10 && !showAll && (
             <button
               type="button"
               onClick={() => setShowAll(true)}
               className="btn-link"
             >
-              모두 보기
+              Show All
             </button>
           )}
           {showAll && (
@@ -138,7 +138,7 @@ const DictionaryEditor = ({ onChange }) => {
               onClick={() => setShowAll(false)}
               className="btn-link"
             >
-              접기
+              Collapse
             </button>
           )}
         </p>
@@ -159,7 +159,7 @@ const DictionaryEditor = ({ onChange }) => {
               </div>
             ))
           ) : (
-            <p className="empty-message">딕셔너리 항목이 비어있습니다.</p>
+            <p className="empty-message">Dictionary items are empty.</p>
           )}
         </div>
       </div>

@@ -8,15 +8,15 @@ const ResultTable = ({ results }) => {
     return (
       <div className="empty-state">
         <div className="empty-icon">📂</div>
-        <p>아직 스캔 결과가 없습니다.</p>
+        <p>No scan results yet.</p>
         <p className="empty-hint">
-          위 폼에서 타겟 URL을 입력하고 스캔을 시작하세요.
+          Enter target URLs in the form above and start scanning.
         </p>
       </div>
     );
   }
 
-  // 성공한 결과만 필터링 (info가 존재하고, status_code가 200 또는 403인 경우)
+  // Filter only successful results (info exists and status_code is 200 or 403)
   const successfulEntries = Object.entries(results).filter(
     ([_, info]) =>
       info && (info.status_code === 200 || info.status_code === 403)
@@ -26,15 +26,15 @@ const ResultTable = ({ results }) => {
     return (
       <div className="empty-state">
         <div className="empty-icon">🔍</div>
-        <p>발견된 디렉토리가 없습니다.</p>
+        <p>No directories found.</p>
         <p className="empty-hint">
-          스캔은 완료되었지만 접근 가능한 디렉토리를 찾지 못했습니다.
+          Scan completed but no accessible directories were discovered.
         </p>
       </div>
     );
   }
 
-  // 정렬 함수
+  // Sorting function
   const sortResults = (a, b) => {
     const [urlA, infoA] = a;
     const [urlB, infoB] = b;
@@ -77,10 +77,10 @@ const ResultTable = ({ results }) => {
 
   const sortedEntries = [...successfulEntries].sort(sortResults);
 
-  // 상태 코드에 따른 색상 반환
+  // Return color style based on status code
   const getStatusStyle = (code) => {
-    if (code === 200) return { color: "#28a745" }; // 성공 - 녹색
-    if (code === 403) return { color: "#fd7e14" }; // 접근 금지 - 주황색
+    if (code === 200) return { color: "#28a745" }; // Success - green
+    if (code === 403) return { color: "#fd7e14" }; // Forbidden - orange
     return {};
   };
 
@@ -102,7 +102,7 @@ const ResultTable = ({ results }) => {
               }
               onClick={() => handleSort("status")}
             >
-              상태 코드
+              Status Code
               <span className="sort-icon"></span>
             </th>
             <th
@@ -111,7 +111,7 @@ const ResultTable = ({ results }) => {
               }
               onClick={() => handleSort("length")}
             >
-              콘텐츠 길이
+              Content Length
               <span className="sort-icon"></span>
             </th>
             <th
@@ -120,7 +120,7 @@ const ResultTable = ({ results }) => {
               }
               onClick={() => handleSort("listing")}
             >
-              디렉토리 리스팅
+              Directory Listing
               <span className="sort-icon"></span>
             </th>
           </tr>
@@ -144,9 +144,9 @@ const ResultTable = ({ results }) => {
               <td>{info.content_length.toLocaleString()}</td>
               <td>
                 {info.directory_listing ? (
-                  <span className="badge success">활성화됨</span>
+                  <span className="badge success">Enabled</span>
                 ) : (
-                  <span className="badge neutral">비활성화</span>
+                  <span className="badge neutral">Disabled</span>
                 )}
               </td>
             </tr>
