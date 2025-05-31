@@ -17,7 +17,6 @@ const ResultTable = ({ results }) => {
     );
   }
 
-  // Filter only successful results (info exists and status_code is 200 or 403)
   const successfulEntries = Object.entries(results).filter(
     ([_, info]) =>
       info && (info.status_code === 200 || info.status_code === 403)
@@ -35,7 +34,6 @@ const ResultTable = ({ results }) => {
     );
   }
 
-  // Sorting function
   const sortResults = (a, b) => {
     const [urlA, infoA] = a;
     const [urlB, infoB] = b;
@@ -52,13 +50,15 @@ const ResultTable = ({ results }) => {
       case "length":
         comparison = infoA.content_length - infoB.content_length;
         break;
-      case "listing":
-        comparison =
-          infoA.directory_listing === infoB.directory_listing
-            ? 0
-            : infoA.directory_listing
-            ? 1
-            : -1;
+      case "listing": // 'listing'으로 필드 이름 변경 또는 유지 (백엔드와 일치)
+        // directory_listing은 boolean 값이므로, true를 더 큰 값으로 간주하여 정렬
+        if (infoA.directory_listing === infoB.directory_listing) {
+          comparison = 0;
+        } else if (infoA.directory_listing) {
+          comparison = 1; // true가 더 크도록
+        } else {
+          comparison = -1; // false가 더 작도록
+        }
         break;
       default:
         comparison = 0;
@@ -78,10 +78,9 @@ const ResultTable = ({ results }) => {
 
   const sortedEntries = [...successfulEntries].sort(sortResults);
 
-  // Return color style based on status code
   const getStatusStyle = (code) => {
-    if (code === 200) return { color: "#28a745" }; // Success - green
-    if (code === 403) return { color: "#fd7e14" }; // Forbidden - orange
+    if (code === 200) return { color: "#28a745" };
+    if (code === 403) return { color: "#fd7e14" };
     return {};
   };
 
@@ -125,11 +124,11 @@ const ResultTable = ({ results }) => {
             </th>
             <th
               className={
-                sortField === "listing"
+                sortField === "listing" // 'listing'으로 필드 이름 변경 또는 유지
                   ? `${styles.sorted} ${styles[sortDirection]}`
                   : ""
               }
-              onClick={() => handleSort("listing")}
+              onClick={() => handleSort("listing")} // 'listing'으로 필드 이름 변경 또는 유지
             >
               Directory Listing
               <span className={styles.sortIcon}></span>
@@ -154,7 +153,7 @@ const ResultTable = ({ results }) => {
               </td>
               <td>{info.content_length.toLocaleString()}</td>
               <td>
-                {info.directory_listing ? (
+                {info.directory_listing ? ( // info.directory_listing 사용
                   <span className={`${styles.badge} ${styles.success}`}>
                     Enabled
                   </span>

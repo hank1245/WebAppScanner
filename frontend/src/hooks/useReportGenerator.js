@@ -28,7 +28,7 @@ export const useReportGenerator = (results, scanMetadata) => {
         url: url,
         status_code: info.status_code,
         content_length: info.content_length,
-        directory_listing: info.directory_listing,
+        directory_listing: info.directory_listing, // directory_listing 정보 추가
       })),
       dictionary_settings: {
         use_default_dictionary: scanMetadata.useDefaultDictionary,

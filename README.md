@@ -13,7 +13,7 @@
 - **Recursive Crawling**: Follow internal links to a specified depth.
 - **robots.txt Compliance**: Optionally respect crawling restrictions defined in `robots.txt`.
 - **Exclusion List**: Skip scanning specific URLs or domains.
-- **Directory Listing Detection**: Identify paths with directory listing enabled.
+- **Directory Listing Detection**: Identify paths with directory listing enabled by checking for common patterns (e.g., "Index of /", "Parent Directory") and considering server configurations (Apache Options Indexes, Nginx autoindex on) or missing index files.
 - **Result Filtering & Sorting**: Filter and sort by status code, content length, and more.
 - **Detailed Report Export**: Export scan results as a JSON file.
 
@@ -23,28 +23,30 @@
 
 DirectoryTracer performs scanning using the following workflow:
 
-1. **Scan Configuration**: The user specifies target URLs, scan mode, depth, and other options.
-2. **Dictionary Probing**: URLs are appended with predefined or custom dictionary entries and sent as HTTP requests.
-3. **Response Analysis**: Responses are analyzed based on HTTP status code, content length, and directory listing indicators.
-4. **Recursive Crawling**: Discovered pages are parsed for additional links, up to the specified depth.
-5. **PHP Site Detection**: Server headers and page contents are examined to identify PHP-based applications.
-6. **Result Display**: Valid paths are displayed with metadata including response code and listing status.
+1.  **Scan Configuration**: The user specifies target URLs, scan mode, depth, and other options.
+2.  **Dictionary Probing**: URLs are appended with predefined or custom dictionary entries and sent as HTTP requests.
+3.  **Response Analysis**: Responses are analyzed based on HTTP status code, content length, and specific HTML patterns indicating directory listing (e.g., "Index of /", "Parent Directory"). This helps detect listings due to server settings like Apache's `Options Indexes` or Nginx's `autoindex on`, as well as missing index files.
+4.  **Recursive Crawling**: Discovered pages are parsed for additional links, up to the specified depth.
+5.  **Result Display**: Valid paths are displayed with metadata including response code and listing status.
 
 ---
 
 ## Tech Stack
 
 ### Frontend
+
 - **React**: UI development
 - **Axios**: API communication
 - **CSS**: Responsive design
 
 ### Backend
+
 - **FastAPI**: High-performance Python web framework
 - **BeautifulSoup4**: HTML parsing
 - **Requests**: HTTP client library
 
 ### Infrastructure
+
 - **Docker & Docker Compose**: Containerization and orchestration
 - **TOR Proxy**: Access `.onion` domains via SOCKS5 proxy
 
@@ -53,6 +55,7 @@ DirectoryTracer performs scanning using the following workflow:
 ## Installation & Execution
 
 ### Prerequisites
+
 - Docker
 - Docker Compose
 
@@ -65,12 +68,12 @@ cd directory_scanner
 
 # Launch the application
 docker-compose up -d
-````
+```
 
 Access the app via:
 
-* Frontend: [http://localhost:3000](http://localhost:3000)
-* Backend API: [http://localhost:8000](http://localhost:8000)
+- Frontend: [http://localhost:3000](http://localhost:3000)
+- Backend API: [http://localhost:8000](http://localhost:8000)
 
 ---
 
@@ -90,4 +93,3 @@ Access the app via:
 MIT License
 
 ---
-
