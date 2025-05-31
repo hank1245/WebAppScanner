@@ -1,0 +1,41 @@
+# .github/workflows/python-tests.yml
+name: Python Backend Tests
+
+on:
+  push: # main 브랜치에 push될 때 실행
+    branches: [main]
+  pull_request: # main 브랜치로 pull request가 생성될 때 실행
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # 실행 환경 (최신 Ubuntu)
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"] # 테스트할 Python 버전들
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4 # 저장소 코드를 가져옴
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # backend/requirements.txt 파일이 있다면:
+          # pip install -r backend/requirements.txt
+          # 테스트에 필요한 특정 라이브러리만 설치할 수도 있습니다 (예: requests, requests-mock)
+          pip install requests requests-mock beautifulsoup4 # scanner.py 및 테스트에 필요한 최소 의존성
+
+      - name: Run tests
+        # backend 디렉토리로 이동하여 테스트 실행 (테스트 파일이 backend/tests에 있다고 가정)
+        run: |
+          cd backend
+          python -m unittest discover -s tests -p "test_*.py"
+          # 또는 프로젝트 루트에서 실행한다면:
+          # python -m unittest discover -s backend/tests -p "test_*.py"
