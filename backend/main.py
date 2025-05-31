@@ -34,6 +34,8 @@ class ScanRequest(BaseModel):
     exclusions: list[str] = []
     max_depth: int = 2
     respect_robots_txt: bool = True
+    username: Optional[str] = None # Added username
+    password: Optional[str] = None # Added password
 
 @app.post("/scan")
 async def scan(request: ScanRequest):
@@ -69,7 +71,9 @@ async def scan(request: ScanRequest):
                 dictionary=final_dictionary,  # 최종 딕셔너리 전달
                 mode=request.mode,
                 exclusions=request.exclusions,
-                respect_robots_txt=request.respect_robots_txt
+                respect_robots_txt=request.respect_robots_txt,
+                username=request.username, # Pass username
+                password=request.password  # Pass password
             )
             result_item = scanner.run(max_depth=request.max_depth)
             all_results.update(result_item)

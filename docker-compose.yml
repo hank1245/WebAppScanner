@@ -19,7 +19,7 @@ services:
       - "3000:3000"
     container_name: directory_scanner_frontend
     environment:
-      - REACT_APP_API_URL=http://backend:8000
+      - REACT_APP_API_URL=http://localhost:8000 # localhost로 변경
     depends_on:
       - backend
     networks:

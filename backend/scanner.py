@@ -22,9 +22,9 @@ HEADERS = {
 }
 
 class MultiWebScanner:
-    def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True):
+    def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True, username=None, password=None):
         """
-        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록을 입력받습니다.
+        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록, 로그인 자격 증명을 입력받습니다.
         모드가 'darkweb'이면 TOR 프록시를 적용합니다.
         respect_robots_txt: robots.txt의 Disallow 규칙을 따를지 여부
         """
@@ -32,13 +32,16 @@ class MultiWebScanner:
         self.dictionary = dictionary
         self.base_domain = urlparse(self.target_url).netloc
         self.found_directories = {}
-        self.dictionary_scanned = set()  # 이미 딕셔너리 스캔을 수행한 URL 목록
+        self.dictionary_scanned = set()
         self.mode = mode
-        self.exclusions = set(exclusions) if exclusions else set() # Store exclusions as a set for efficient lookup
-        self.session = requests.Session()
+        self.exclusions = set(exclusions) if exclusions else set()
+        self.session = requests.Session() # requests.Session() will manage cookies
         self.session.headers.update(HEADERS)
         self.respect_robots_txt = respect_robots_txt
-        self.robots_disallowed_paths = set()  # 파싱된 robots.txt의 Disallow 경로
+        self.robots_disallowed_paths = set()
+        self.username = username
+        self.password = password
+        self.logged_in_target = None # Track which target URL login was attempted for
         
         if self.mode == 'darkweb':
             self.session.proxies = PROXIES
@@ -52,6 +55,82 @@ class MultiWebScanner:
         if self.respect_robots_txt:
             # 생성자에서 robots.txt 파싱 실행
             self._parse_robots_txt()
+
+    def _attempt_login(self):
+        """
+        제공된 자격 증명을 사용하여 대상 URL에 로그인을 시도합니다.
+        매우 기본적인 로그인 시도이며, 모든 사이트에서 작동하지 않을 수 있습니다.
+        """
+        if not self.username or not self.password:
+            return False
+
+        if self.logged_in_target == self.target_url: # 이미 이 타겟에 대해 로그인 시도/성공
+            print(f"[*] 이미 {self.target_url}에 로그인 시도/성공함.")
+            return True # 혹은 저장된 로그인 상태 반환
+
+        print(f"[+] {self.target_url}에 로그인 시도 중 (사용자: {self.username})...")
+        
+        # 일반적인 로그인 경로 시도
+        login_paths = ["login", "signin", "wp-login.php", "admin/login", "user/login", "auth/login"] 
+        # 시도해볼 기본 URL (타겟 URL 자체도 로그인 페이지일 수 있음)
+        base_login_urls = [self.target_url]
+        for path in login_paths:
+            base_login_urls.append(f"{self.target_url}/{path.lstrip('/')}")
+
+        # 일반적인 폼 필드 이름
+        username_fields = ["username", "user", "email", "log", "user_login"]
+        password_fields = ["password", "pass", "pwd", "user_pass"]
+
+        initial_cookies_count = len(self.session.cookies)
+
+        for login_url_candidate in base_login_urls:
+            try:
+                print(f"  -> 로그인 URL 시도: {login_url_candidate}")
+                # 간단한 POST 요청 시도, CSRF 등 복잡한 케이스는 처리하지 않음
+                # 다양한 필드명 조합 시도
+                for u_field in username_fields:
+                    for p_field in password_fields:
+                        login_data = {
+                            u_field: self.username,
+                            p_field: self.password,
+                            # 일부 사이트는 추가 필드 요구 가능 (예: 'remember_me', 'submit')
+                        }
+                        
+                        # POST 요청 전 GET 요청으로 쿠키나 CSRF 토큰을 얻는 것이 더 좋지만, 단순화
+                        response = self.session.post(login_url_candidate, data=login_data, timeout=15, allow_redirects=True)
+                        
+                        # 로그인 성공 추론:
+                        # 1. 상태 코드가 200 OK이고, 응답 내용에 "logout", "dashboard", username 등이 포함되는 경우
+                        # 2. 리다이렉션(302) 후 다른 페이지로 이동하고 쿠키가 설정된 경우
+                        # 3. 로그인 실패 메시지가 없는 경우
+                        
+                        current_cookies_count = len(self.session.cookies)
+                        
+                        # 매우 기본적인 성공 확인: 쿠키가 새로 설정되었거나, 특정 성공 키워드가 있거나, 에러 메시지가 없는 경우
+                        login_error_patterns = ["invalid username", "incorrect password", "login failed", "authentication failed"]
+                        login_success_patterns = ["logout", "dashboard", "my account", self.username]
+
+                        response_text_lower = response.text.lower()
+                        
+                        has_error = any(err_pattern in response_text_lower for err_pattern in login_error_patterns)
+                        has_success_keyword = any(succ_pattern in response_text_lower for succ_pattern in login_success_patterns)
+
+                        if response.status_code == 200 and not has_error and (has_success_keyword or current_cookies_count > initial_cookies_count):
+                            print(f"[+] {login_url_candidate} 에서 로그인 성공한 것으로 보임 (사용자: {self.username}).")
+                            self.logged_in_target = self.target_url
+                            return True
+                        elif response.history and current_cookies_count > initial_cookies_count and not has_error: # 리다이렉션 발생 및 쿠키 변경
+                             print(f"[+] {login_url_candidate} 에서 리다이렉션 후 로그인 성공한 것으로 보임 (사용자: {self.username}).")
+                             self.logged_in_target = self.target_url
+                             return True
+                print(f"  [-] {login_url_candidate} 에서 자동 로그인 필드명 조합 실패.")
+            except requests.RequestException as e:
+                print(f"  [!] {login_url_candidate} 로그인 시도 중 오류: {e}")
+            except Exception as e:
+                print(f"  [!] {login_url_candidate} 로그인 시도 중 예기치 않은 오류: {e}")
+        
+        print(f"[-] {self.target_url} 에 대한 자동 로그인 시도 실패.")
+        return False
 
     def _parse_robots_txt(self):
         """
@@ -171,7 +250,12 @@ class MultiWebScanner:
         응답을 분석하여 디렉토리 리스팅 여부를 판단합니다.
         Apache, Nginx 등의 서버 설정 및 인덱스 파일 부재로 인한 노출을 감지합니다.
         """
-        if not response or response.status_code != 200:
+        if not response: # 응답이 없는 경우 (예: 요청 실패) False 반환
+            return False
+        # 디렉토리 리스팅은 주로 200 OK 응답에서 확인되지만, 
+        # 경우에 따라 403 Forbidden 에서도 리스팅 패턴이 나타날 수 있으므로 status_code != 200 조건 완화 고려.
+        # 여기서는 일단 200을 기준으로 하되, 필요시 확장 가능.
+        if response.status_code != 200: 
             return False
 
         content_type = response.headers.get('Content-Type', '').lower()
@@ -210,35 +294,47 @@ class MultiWebScanner:
         제외된 URL은 스캔하지 않음.
         """
         url = f"{base_url.rstrip('/')}/{dir_name.lstrip('/')}"
+        
         if self.is_excluded(url):
-            print(f"[-] 딕셔너리 스캔에서 제외된 URL: {url}")
-            return url, None
+            print(f"[-] 딕셔너리 스캔에서 제외된 URL (초기 확인): {url}")
+            return url, {
+                'status_code': 'EXCLUDED',
+                'content_length': 0,
+                'directory_listing': False,
+                'note': 'URL excluded by configuration or robots.txt.'
+            }
 
-        response = self.fetch_url(url) # fetch_url will also check exclusion
+        response = self.fetch_url(url) 
         if response:
             status_code = response.status_code
             content_length = len(response.content)
-            # 모든 응답에 대해 디렉토리 리스팅 분석 수행
-            directory_listing = self.analyze_directory_listing(response)
+            # 디렉토리 리스팅 분석은 성공적인 응답(주로 200)에 대해 수행
+            directory_listing = self.analyze_directory_listing(response) if status_code == 200 else False
             
             return url, {
                 'status_code': status_code,
                 'content_length': content_length,
-                'directory_listing': directory_listing
+                'directory_listing': directory_listing,
+                'note': f'Scan attempted. Status: {status_code}' if status_code != 200 else 'Scan successful.'
             }
         else:
-            return url, None
+            # fetch_url이 None을 반환한 경우 (요청 실패 또는 fetch_url 내부에서 제외됨)
+            return url, {
+                'status_code': 'NO_RESPONSE_OR_ERROR',
+                'content_length': 0,
+                'directory_listing': False,
+                'note': 'Failed to fetch URL (request error or excluded by fetch_url).'
+            }
 
     def dictionary_scan(self, base_url):
         """
         주어진 base_url에 대해 딕셔너리 목록으로 디렉토리 존재 여부를 멀티스레딩으로 스캔.
         """
-        # 이미 해당 base_url에 대해 딕셔너리 스캔을 수행했으면 건너뜀
         if base_url in self.dictionary_scanned:
             print(f"[*] 이미 딕셔너리 스캔 완료: {base_url}")
             return
             
-        print(f"[+] 딕셔너리 스캔 시작: {base_url}")
+        print(f"[+] 딕셔 dictionary_scan 시작: {base_url}")
         results = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             future_to_dir = {
@@ -246,17 +342,21 @@ class MultiWebScanner:
                 for dir_name in self.dictionary
             }
             for future in concurrent.futures.as_completed(future_to_dir):
-                dir_name = future_to_dir[future]
+                original_dir_name = future_to_dir[future]
+                attempted_url = f"{base_url.rstrip('/')}/{original_dir_name.lstrip('/')}"
                 try:
-                    url, result = future.result()
-                    if result: # 유효한 결과만 저장
-                        results[url] = result
+                    _, scan_info = future.result() 
+                    results[attempted_url] = scan_info 
                 except Exception as e:
-                    print(f"[!] 디렉토리 {dir_name} 스캔 중 오류 발생: {e}")
-                    # 실패한 경우에도 URL을 키로 하고 None을 값으로 저장하여 추적 가능
-                    # results[urljoin(base_url, dir_name)] = None 
+                    print(f"[!] 딕셔너리 항목 {original_dir_name} 스캔 작업 중 예외 발생: {e}")
+                    results[attempted_url] = {
+                        'status_code': 'SCANNER_TASK_ERROR',
+                        'content_length': 0,
+                        'directory_listing': False,
+                        'note': f'Internal error during scan attempt for {original_dir_name}: {str(e)}'
+                    }
         self.found_directories.update(results)
-        self.dictionary_scanned.add(base_url) # 스캔 완료된 URL 기록
+        self.dictionary_scanned.add(base_url)
 
     def crawl_recursive(self, current_url, visited, depth, max_depth):
         """
@@ -339,9 +439,13 @@ class MultiWebScanner:
     def run(self, max_depth=2):
         """
         스캔 실행 함수.
-        1. 초기 target_url에 대해 딕셔너리 스캔 수행.
-        2. target_url부터 재귀적 크롤링 시작.
+        1. (선택적) 로그인 시도.
+        2. 초기 target_url에 대해 딕셔너리 스캔 수행.
+        3. target_url부터 재귀적 크롤링 시작.
         """
+        if self.username and self.password:
+            self._attempt_login() # 세션 쿠키가 설정될 수 있음
+
         visited = set()
         
         # 1. 초기 target_url에 대해 딕셔너리 스캔 수행

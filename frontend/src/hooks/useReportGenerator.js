@@ -21,8 +21,24 @@ export const useReportGenerator = (results, scanMetadata) => {
       targets_list: scanMetadata.targets,
       max_depth: scanMetadata.maxDepth,
       respect_robots_txt: scanMetadata.respectRobotsTxt,
+      credentials_provided: scanMetadata.credentialsProvided, // 이미 반영됨
       exclusions_list: scanMetadata.exclusions,
       checked_paths_count: Object.keys(results).length,
+      all_attempted_paths_details: Object.entries(results).map(
+        ([url, info]) => ({
+          // 이미 반영됨
+          url: url,
+          status_code: info ? String(info.status_code) : "UNKNOWN_ERROR",
+          content_length: info ? info.content_length : 0,
+          directory_listing: info ? info.directory_listing : false,
+          note:
+            info && info.note
+              ? info.note
+              : info
+              ? "No specific note."
+              : "Scan info missing.",
+        })
+      ),
       successful_directories_count: successfulEntries.length,
       successful_directories_list: successfulEntries.map(([url, info]) => ({
         url: url,

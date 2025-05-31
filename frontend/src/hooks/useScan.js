@@ -13,7 +13,9 @@ export const useScan = () => {
     maxDepth,
     respectRobotsTxt,
     dictionaryOperations,
-    useDefaultDictionary
+    useDefaultDictionary,
+    username, // 이미 파라미터로 존재
+    password // 이미 파라미터로 존재
   ) => {
     setLoading(true);
     setResults({});
@@ -27,6 +29,7 @@ export const useScan = () => {
       endTime: null,
       useDefaultDictionary: useDefaultDictionary,
       dictionaryOperations: dictionaryOperations,
+      credentialsProvided: !!(username && password), // 이미 반영됨
     });
 
     try {
@@ -37,7 +40,9 @@ export const useScan = () => {
         maxDepth,
         respectRobotsTxt,
         dictionaryOperations,
-        useDefaultDictionary
+        useDefaultDictionary,
+        username, // API 호출 시 전달
+        password // API 호출 시 전달
       );
       setResults(scanResult);
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
