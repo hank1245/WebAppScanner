@@ -1,0 +1,53 @@
+name: CI Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test: # Renamed job for clarity
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Assuming requirements.txt is in the backend directory
+          # If you have a requirements.txt in ./backend, use:
+          # pip install -r backend/requirements.txt
+          # For now, installing specific dependencies as per original file:
+          pip install requests requests-mock beautifulsoup4
+      - name: Run backend tests
+        run: |
+          cd backend
+          python -m unittest discover -s tests -p "test_*.py"
+
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend # Set default working directory for frontend steps
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "16" # Using version from your frontend Dockerfile
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Run frontend tests
+        run: npm test
