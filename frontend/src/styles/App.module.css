@@ -45,3 +45,90 @@
   margin: 0;
   line-height: 1.5;
 }
+
+/* In App.module.css or a global style file */
+.errorMessage {
+  background-color: #f8d7da; /* Light red */
+  color: #721c24; /* Dark red */
+  padding: 1rem;
+  border: 1px solid #f5c6cb;
+  border-radius: 0.25rem;
+  margin: 1rem 0;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.serverInfoSection {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.25rem;
+  border: 1px solid #e9ecef;
+}
+
+.serverInfoSection h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  color: #343a40;
+  font-size: 1.1rem;
+}
+
+.serverInfoItem {
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  font-size: 0.9rem;
+}
+.serverInfoItem strong {
+  color: #495057;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+.serverInfoItem ul {
+  list-style-type: none;
+  padding-left: 1rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0;
+}
+.serverInfoItem li {
+  color: #6c757d;
+  margin-bottom: 0.1rem;
+}
+.serverInfoItem em {
+  font-style: normal;
+  color: #495057;
+  font-weight: 500;
+  margin-right: 0.25rem;
+}
+
+/* In ResultTable.module.css */
+.filterControls {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* Reduced gap */
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.filterControls label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.filterSelect {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid #ced4da;
+  background-color: #fff;
+  font-size: 0.9rem;
+  min-width: 200px; /* Ensure it's not too small */
+}
+
+.badge.info {
+  background-color: #e0e7ff; /* Light blue */
+  color: #3730a3; /* Darker blue */
+  margin-left: 0.5rem;
+  padding: 0.2em 0.5em;
+  font-size: 0.75em; /* Smaller badge */
+  border-radius: 0.25rem;
+  font-weight: 500;
+}

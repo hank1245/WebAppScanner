@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+import sys # sys 모듈 임포트
+import traceback # traceback 모듈 임포트
+from fastapi import FastAPI, HTTPException # HTTPException 임포트
 from pydantic import BaseModel
 from scanner import MultiWebScanner
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +40,7 @@ class ScanRequest(BaseModel):
 
 @app.post("/scan")
 async def scan(request: ScanRequest):
-    all_results_by_target = {} # Changed to store results per target
+    all_results_by_target = {} 
 
     # 딕셔너리 준비
     final_dictionary = []
@@ -72,7 +74,10 @@ async def scan(request: ScanRequest):
             result_item_data = scanner.run(max_depth=request.max_depth)
             all_results_by_target[target_url_item] = result_item_data
         
-        return {"result": all_results_by_target} # Return results keyed by target URL
+        return {"result": all_results_by_target}
+    except HTTPException as http_exc: # 이미 HTTPException인 경우 그대로 전달
+        raise http_exc
     except Exception as e:
-        print(f"Error during scan process: {e}")
-        raise HTTPException(status_code=500, detail=f"An error occurred during scanning: {str(e)}")
+        print(f"Critical error during scan process for request {request.target_urls}: {e}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        raise HTTPException(status_code=500, detail=f"Scan failed due to an internal server error. Error: {str(e)}. Check backend logs for more details.")

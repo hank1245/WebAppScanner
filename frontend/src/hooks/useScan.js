@@ -2,10 +2,11 @@ import { useState } from "react";
 import { scanWebsite } from "../api";
 
 export const useScan = () => {
-  const [results, setResults] = useState({}); // This will store merged directories for ResultTable
+  const [results, setResults] = useState({});
   const [loading, setLoading] = useState(false);
   const [scanMetadata, setScanMetadata] = useState(null);
-  const [rawScanData, setRawScanData] = useState(null); // To store the full API response
+  const [rawScanData, setRawScanData] = useState(null);
+  const [scanError, setScanError] = useState(null); // 에러 상태 추가
 
   const handleScan = async (
     targetUrlList,
@@ -15,13 +16,14 @@ export const useScan = () => {
     respectRobotsTxt,
     dictionaryOperations,
     useDefaultDictionary,
-    sessionCookies // ADDED
+    sessionCookies
   ) => {
     setLoading(true);
     setResults({});
-    setRawScanData(null); // Reset raw data
+    setRawScanData(null);
+    setScanError(null); // 새 스캔 시작 시 에러 초기화
     const startTime = new Date();
-    // Initial metadata
+
     let initialScanMetadata = {
       targets: targetUrlList,
       exclusions: exclusions,
@@ -71,7 +73,26 @@ export const useScan = () => {
       }));
     } catch (error) {
       console.error("Error occurred during scan:", error);
-      alert("Scan failed.");
+      let errorMessage =
+        "An unexpected error occurred during the scan. Please try again.";
+      if (error.response && error.response.data) {
+        // FastAPI validation errors or custom detail from HTTPException
+        if (typeof error.response.data.detail === "string") {
+          errorMessage = error.response.data.detail;
+        } else if (Array.isArray(error.response.data.detail)) {
+          // FastAPI validation error format
+          errorMessage = error.response.data.detail
+            .map((d) => `${d.loc.join(".")} - ${d.msg}`)
+            .join("; ");
+        } else if (error.response.data.error) {
+          // 이전 custom error 형식 (호환성)
+          errorMessage = error.response.data.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      setScanError(errorMessage);
+      setResults({});
       setScanMetadata((prev) => ({ ...prev, endTime: new Date() }));
     } finally {
       setLoading(false);
@@ -105,7 +126,9 @@ export const useScan = () => {
     results,
     loading,
     scanMetadata,
+    rawScanData,
     handleScan,
     getScanSummary,
-  };
+    scanError,
+  }; // scanError 반환
 };

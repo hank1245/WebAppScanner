@@ -2,11 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import concurrent.futures
-import re # Import re for regular expressions
-from urllib.parse import urljoin, urlparse
-# https://p53lf57qovyuvwsc6xnrppddxpr23otqjafmtmcstail6x7cq2qcyd.onion
-# https://facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion
-# https://3g2upl4pq6kufc4m.onion
+import re
+from typing import Optional, List # Optional과 List를 typing 모듈에서 가져옵니다.
 
 # TOR 네트워크를 활용하기 위한 프록시 설정 (다크웹 모드)
 PROXIES = {
@@ -323,7 +320,7 @@ class MultiWebScanner:
 
         return False
 
-    def dictionary_scan_single(self, base_url, dir_name):
+    def dictionary_scan_single(self, base_url, dir_name, source='unknown'): # source 파라미터 추가
         """
         주어진 base_url과 딕셔너리 항목을 조합하여 URL을 요청한 후,
         디렉토리 리스팅 여부와 상태 코드를 확인.
@@ -332,49 +329,52 @@ class MultiWebScanner:
         url = f"{base_url.rstrip('/')}/{dir_name.lstrip('/')}"
         
         if self.is_excluded(url):
-            print(f"[-] 딕셔너리 스캔에서 제외된 URL (초기 확인): {url}")
+            print(f"[-] 딕셔너리 스캔에서 제외된 URL (초기 확인, Source: {source}): {url}")
             return url, {
                 'status_code': 'EXCLUDED',
                 'content_length': 0,
                 'directory_listing': False,
-                'note': 'URL excluded by configuration or robots.txt.'
+                'note': 'URL excluded by configuration or robots.txt.',
+                'source': source # source 정보 추가
             }
 
         response = self.fetch_url(url) 
         if response:
             status_code = response.status_code
             content_length = len(response.content)
-            # 디렉토리 리스팅 분석은 성공적인 응답(주로 200)에 대해 수행
             directory_listing = self.analyze_directory_listing(response) if status_code == 200 else False
             
             return url, {
                 'status_code': status_code,
                 'content_length': content_length,
                 'directory_listing': directory_listing,
-                'note': f'Scan attempted. Status: {status_code}' if status_code != 200 else 'Scan successful.'
+                'note': f'Scan attempted. Status: {status_code}' if status_code != 200 else 'Scan successful.',
+                'source': source # source 정보 추가
             }
         else:
-            # fetch_url이 None을 반환한 경우 (요청 실패 또는 fetch_url 내부에서 제외됨)
             return url, {
                 'status_code': 'NO_RESPONSE_OR_ERROR',
                 'content_length': 0,
                 'directory_listing': False,
-                'note': 'Failed to fetch URL (request error or excluded by fetch_url).'
+                'note': 'Failed to fetch URL (request error or excluded by fetch_url).',
+                'source': source # source 정보 추가
             }
 
-    def dictionary_scan(self, base_url):
+    def dictionary_scan(self, base_url, source='initial'): # source 기본값을 'initial'로 변경
         """
         주어진 base_url에 대해 딕셔너리 목록으로 디렉토리 존재 여부를 멀티스레딩으로 스캔.
         """
-        if base_url in self.dictionary_scanned:
-            print(f"[*] 이미 딕셔너리 스캔 완료: {base_url}")
-            return
+        # 다른 출처의 스캔을 허용하기 위해 self.dictionary_scanned 검사 로직 수정 또는 제거 고려.
+        # 여기서는 일단 유지하되, source에 따라 다르게 처리할 수 있음을 인지.
+        # if base_url in self.dictionary_scanned and source not in ['js_api']: # js_api는 재스캔 허용 등
+        #     print(f"[*] 이미 일반 스캔 완료 (Source: {source}): {base_url}")
+        #     return
             
-        print(f"[+] 딕셔 dictionary_scan 시작: {base_url}")
+        print(f"[+] 딕셔너리 스캔 시작 (Source: {source}): {base_url}")
         results = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             future_to_dir = {
-                executor.submit(self.dictionary_scan_single, base_url, dir_name): dir_name
+                executor.submit(self.dictionary_scan_single, base_url, dir_name, source): dir_name # source 전달
                 for dir_name in self.dictionary
             }
             for future in concurrent.futures.as_completed(future_to_dir):
@@ -384,15 +384,18 @@ class MultiWebScanner:
                     _, scan_info = future.result() 
                     results[attempted_url] = scan_info 
                 except Exception as e:
-                    print(f"[!] 딕셔너리 항목 {original_dir_name} 스캔 작업 중 예외 발생: {e}")
+                    print(f"[!] 딕셔너리 항목 {original_dir_name} 스캔 작업 중 예외 발생 (Source: {source}): {e}")
                     results[attempted_url] = {
                         'status_code': 'SCANNER_TASK_ERROR',
                         'content_length': 0,
                         'directory_listing': False,
-                        'note': f'Internal error during scan attempt for {original_dir_name}: {str(e)}'
+                        'note': f'Internal error during scan attempt for {original_dir_name}: {str(e)}',
+                        'source': source # source 정보 추가
                     }
         self.found_directories.update(results)
-        self.dictionary_scanned.add(base_url)
+        # 일반적인 크롤링이나 초기 스캔에 의해서만 dictionary_scanned에 추가
+        if source in ['initial', 'crawl']:
+            self.dictionary_scanned.add(base_url)
 
     def crawl_recursive(self, current_url, visited, depth, max_depth):
         """
@@ -412,7 +415,7 @@ class MultiWebScanner:
         print(f"[+] 크롤링 (Depth: {depth}) : {current_url}")
         visited.add(current_url)
         
-        self.dictionary_scan(current_url)
+        self.dictionary_scan(current_url, source='crawl') # source='crawl' 명시
 
         response = self.fetch_url(current_url)
         if not response:
@@ -425,22 +428,20 @@ class MultiWebScanner:
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # --- JavaScript Link Extraction and API Endpoint Scanning ---
-        if soup: # Ensure soup object is not None
+        if soup: 
             js_file_urls = self._extract_js_links(soup, current_url)
             for js_url in js_file_urls:
                 if js_url not in self.processed_js_files:
                     print(f"[+] JS 파일 발견 및 파싱 시도: {js_url}")
                     self.processed_js_files.add(js_url)
-                    js_response = self.fetch_url(js_url) # Use fetch_url to respect exclusions etc.
+                    js_response = self.fetch_url(js_url) 
                     if js_response and js_response.text:
-                        # Pass current_url as the page where script was found for relative path resolution
                         api_endpoints = self._parse_js_for_endpoints(js_response.text, current_url) 
                         for endpoint_url_base in api_endpoints:
                             if endpoint_url_base not in self.js_discovered_api_endpoints and not self.is_excluded(endpoint_url_base):
                                 print(f"[+] JS에서 API 엔드포인트 발견, 딕셔너리 스캔 시도: {endpoint_url_base}")
                                 self.js_discovered_api_endpoints.add(endpoint_url_base)
-                                # Perform dictionary scan on the discovered API base path
-                                self.dictionary_scan(endpoint_url_base.rstrip('/')) 
+                                self.dictionary_scan(endpoint_url_base.rstrip('/'), source='js_api') # source='js_api' 명시
                     else:
                         print(f"[-] JS 파일 내용을 가져오지 못함: {js_url}")
         # --- End JavaScript Link Extraction ---
@@ -498,16 +499,10 @@ class MultiWebScanner:
         if initial_response and not self._headers_analyzed_for_target:
              self._analyze_response_headers(initial_response)
 
-
+        # 1. 초기 target_url에 대해 딕셔너리 스캔 수행 (source='initial'은 dictionary_scan의 기본값)
+        self.dictionary_scan(self.target_url) 
+        
         visited = set()
-        
-        # 1. 초기 target_url에 대해 딕셔너리 스캔 수행
-        print(f"[+] 초기 대상 URL에 대한 딕셔너리 스캔 시작: {self.target_url}")
-        self.dictionary_scan(self.target_url)
-        
-        # 2. target_url부터 재귀적 크롤링 시작
-        # 크롤링 시작 시 visited에 target_url을 추가하여 중복 크롤링 방지
-        # (dictionary_scan 내부에서 visited를 사용하지 않으므로, crawl_recursive의 visited와 별개로 관리)
         print(f"[+] 재귀적 크롤링 시작: {self.target_url}")
         self.crawl_recursive(self.target_url, visited, depth=0, max_depth=max_depth)
         
