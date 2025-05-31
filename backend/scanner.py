@@ -165,12 +165,30 @@ class MultiWebScanner:
         또는 robots.txt에 의해 차단되는지 확인합니다.
         """
         parsed_url = urlparse(url)
-        # Check full URL
+        # Check full URL (사용자가 전체 URL을 제외 목록에 넣었을 경우)
         if url in self.exclusions:
             return True
-        # Check domain/IP
+        # Check domain/IP (사용자가 도메인 자체를 제외 목록에 넣었을 경우)
         if parsed_url.netloc in self.exclusions:
             return True
+
+        # Check for path-based exclusions from user-defined list
+        # self.exclusions는 "/admin", "/user/settings"와 같은 경로 접두사를 포함할 수 있음
+        current_path = parsed_url.path
+        if not current_path: # 경로가 없는 경우 (예: http://example.com)
+            current_path = "/" 
+            
+        for exclusion_pattern in self.exclusions:
+            # exclusion_pattern이 '/'로 시작하는 경로 패턴인지 확인하고,
+            # 현재 URL의 경로가 해당 패턴으로 시작하는지 확인
+            if exclusion_pattern.startswith('/') and current_path.startswith(exclusion_pattern):
+                return True
+            # 만약 exclusion_pattern이 '/'로 시작하지 않는다면 (예: 'admin'),
+            # 이는 의도되지 않은 사용일 수 있으므로, 여기서는 '/'로 시작하는 명확한 경로 패턴만 처리합니다.
+            # 또는, 사용자가 "some/path" (슬래시로 시작하지 않음)를 입력하여
+            # URL 경로 내 어디든 해당 문자열이 포함되면 제외하도록 확장할 수도 있습니다.
+            # 현재는 접두사 일치만 지원합니다.
+
         # Check robots.txt rules
         if self.is_disallowed_by_robots(url):
             return True
