@@ -52,22 +52,6 @@ const HelpModal = ({ isOpen, onClose }) => {
           </p>
         </div>
         <div className={styles.helpSection}>
-          <h4>Login Credentials (Optional)</h4>
-          <p>
-            If the target website requires authentication to access certain
-            areas, you can provide a username and password. The scanner will
-            attempt to log in before scanning.
-          </p>
-          <p>
-            <strong>Note:</strong> This feature attempts to log in using common
-            login paths (e.g., /login, /signin) and form field names. It may not
-            work for all websites. It is primarily intended for testing your own
-            site where you control or understand the login mechanism. Passwords
-            are sent to the backend for the login attempt but are not stored
-            long-term or in reports.
-          </p>
-        </div>
-        <div className={styles.helpSection}>
           <h4>Session Cookies (Optional)</h4>
           <p>
             If the target website requires authentication to access certain
