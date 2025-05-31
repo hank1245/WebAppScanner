@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import concurrent.futures
-import re
+import re # Import re for regular expressions
 from urllib.parse import urljoin, urlparse
 # https://p53lf57qovyuvwsc6xnrppddxpr23otqjafmtmcstail6x7cq2qcyd.onion
 # https://facebookwkhpilnemxj7asaniu7vnjjbiltxjqhye3mhbshg7kx5tfyd.onion
@@ -22,9 +22,9 @@ HEADERS = {
 }
 
 class MultiWebScanner:
-    def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True, username=None, password=None):
+    def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True, session_cookies_string: Optional[str] = None):
         """
-        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록, 로그인 자격 증명을 입력받습니다.
+        초기화 함수: 대상 URL, 딕셔너리 목록, 모드('normal' 또는 'darkweb'), 제외 목록, 세션 쿠키 문자열을 입력받습니다.
         모드가 'darkweb'이면 TOR 프록시를 적용합니다.
         respect_robots_txt: robots.txt의 Disallow 규칙을 따를지 여부
         """
@@ -39,9 +39,26 @@ class MultiWebScanner:
         self.session.headers.update(HEADERS)
         self.respect_robots_txt = respect_robots_txt
         self.robots_disallowed_paths = set()
-        self.username = username
-        self.password = password
-        self.logged_in_target = None # Track which target URL login was attempted for
+        
+        self.server_info = {"Server": "Unknown", "X-Powered-By": "Unknown", "Framework_Hint": "Unknown"}
+        self._headers_analyzed_for_target = False
+        self.processed_js_files = set()
+        self.js_discovered_api_endpoints = set()
+
+        if session_cookies_string:
+            try:
+                # Parse cookie string like "name1=value1; name2=value2"
+                cookies_dict = {}
+                for cookie_pair in session_cookies_string.split(';'):
+                    cookie_pair = cookie_pair.strip()
+                    if '=' in cookie_pair:
+                        name, value = cookie_pair.split('=', 1)
+                        cookies_dict[name.strip()] = value.strip()
+                if cookies_dict:
+                    self.session.cookies.update(cookies_dict)
+                    print(f"[*] 세션 쿠키 적용됨: {cookies_dict.keys()}")
+            except Exception as e:
+                print(f"[!] 제공된 세션 쿠키 문자열 파싱 중 오류 발생: {e}")
         
         if self.mode == 'darkweb':
             self.session.proxies = PROXIES
@@ -56,81 +73,36 @@ class MultiWebScanner:
             # 생성자에서 robots.txt 파싱 실행
             self._parse_robots_txt()
 
-    def _attempt_login(self):
-        """
-        제공된 자격 증명을 사용하여 대상 URL에 로그인을 시도합니다.
-        매우 기본적인 로그인 시도이며, 모든 사이트에서 작동하지 않을 수 있습니다.
-        """
-        if not self.username or not self.password:
-            return False
+    def _analyze_response_headers(self, response):
+        """Analyzes response headers to gather server/framework information."""
+        if not self._headers_analyzed_for_target and response:
+            server_header = response.headers.get('Server')
+            x_powered_by_header = response.headers.get('X-Powered-By')
+            cookies = response.cookies
 
-        if self.logged_in_target == self.target_url: # 이미 이 타겟에 대해 로그인 시도/성공
-            print(f"[*] 이미 {self.target_url}에 로그인 시도/성공함.")
-            return True # 혹은 저장된 로그인 상태 반환
-
-        print(f"[+] {self.target_url}에 로그인 시도 중 (사용자: {self.username})...")
-        
-        # 일반적인 로그인 경로 시도
-        login_paths = ["login", "signin", "wp-login.php", "admin/login", "user/login", "auth/login"] 
-        # 시도해볼 기본 URL (타겟 URL 자체도 로그인 페이지일 수 있음)
-        base_login_urls = [self.target_url]
-        for path in login_paths:
-            base_login_urls.append(f"{self.target_url}/{path.lstrip('/')}")
-
-        # 일반적인 폼 필드 이름
-        username_fields = ["username", "user", "email", "log", "user_login"]
-        password_fields = ["password", "pass", "pwd", "user_pass"]
-
-        initial_cookies_count = len(self.session.cookies)
-
-        for login_url_candidate in base_login_urls:
-            try:
-                print(f"  -> 로그인 URL 시도: {login_url_candidate}")
-                # 간단한 POST 요청 시도, CSRF 등 복잡한 케이스는 처리하지 않음
-                # 다양한 필드명 조합 시도
-                for u_field in username_fields:
-                    for p_field in password_fields:
-                        login_data = {
-                            u_field: self.username,
-                            p_field: self.password,
-                            # 일부 사이트는 추가 필드 요구 가능 (예: 'remember_me', 'submit')
-                        }
-                        
-                        # POST 요청 전 GET 요청으로 쿠키나 CSRF 토큰을 얻는 것이 더 좋지만, 단순화
-                        response = self.session.post(login_url_candidate, data=login_data, timeout=15, allow_redirects=True)
-                        
-                        # 로그인 성공 추론:
-                        # 1. 상태 코드가 200 OK이고, 응답 내용에 "logout", "dashboard", username 등이 포함되는 경우
-                        # 2. 리다이렉션(302) 후 다른 페이지로 이동하고 쿠키가 설정된 경우
-                        # 3. 로그인 실패 메시지가 없는 경우
-                        
-                        current_cookies_count = len(self.session.cookies)
-                        
-                        # 매우 기본적인 성공 확인: 쿠키가 새로 설정되었거나, 특정 성공 키워드가 있거나, 에러 메시지가 없는 경우
-                        login_error_patterns = ["invalid username", "incorrect password", "login failed", "authentication failed"]
-                        login_success_patterns = ["logout", "dashboard", "my account", self.username]
-
-                        response_text_lower = response.text.lower()
-                        
-                        has_error = any(err_pattern in response_text_lower for err_pattern in login_error_patterns)
-                        has_success_keyword = any(succ_pattern in response_text_lower for succ_pattern in login_success_patterns)
-
-                        if response.status_code == 200 and not has_error and (has_success_keyword or current_cookies_count > initial_cookies_count):
-                            print(f"[+] {login_url_candidate} 에서 로그인 성공한 것으로 보임 (사용자: {self.username}).")
-                            self.logged_in_target = self.target_url
-                            return True
-                        elif response.history and current_cookies_count > initial_cookies_count and not has_error: # 리다이렉션 발생 및 쿠키 변경
-                             print(f"[+] {login_url_candidate} 에서 리다이렉션 후 로그인 성공한 것으로 보임 (사용자: {self.username}).")
-                             self.logged_in_target = self.target_url
-                             return True
-                print(f"  [-] {login_url_candidate} 에서 자동 로그인 필드명 조합 실패.")
-            except requests.RequestException as e:
-                print(f"  [!] {login_url_candidate} 로그인 시도 중 오류: {e}")
-            except Exception as e:
-                print(f"  [!] {login_url_candidate} 로그인 시도 중 예기치 않은 오류: {e}")
-        
-        print(f"[-] {self.target_url} 에 대한 자동 로그인 시도 실패.")
-        return False
+            if server_header:
+                self.server_info['Server'] = server_header
+            if x_powered_by_header:
+                self.server_info['X-Powered-By'] = x_powered_by_header
+            
+            # Basic framework hinting from headers/cookies
+            if 'ASP.NET' in (server_header or '') or 'ASP.NET' in (x_powered_by_header or ''):
+                self.server_info['Framework_Hint'] = 'ASP.NET'
+            elif 'PHP' in (x_powered_by_header or ''):
+                self.server_info['Framework_Hint'] = 'PHP'
+            elif any(cookie.name.upper() == 'PHPSESSID' for cookie in cookies):
+                 self.server_info['Framework_Hint'] = 'PHP (Session)'
+            elif 'Express' in (x_powered_by_header or ''):
+                self.server_info['Framework_Hint'] = 'Express.js (Node.js)'
+            elif 'Django' in (server_header or '') or any(cookie.name == 'csrftoken' for cookie in cookies): # Django often sets csrftoken
+                self.server_info['Framework_Hint'] = 'Django (Python)'
+            elif 'Ruby' in (server_header or '') or 'Rails' in (x_powered_by_header or ''):
+                self.server_info['Framework_Hint'] = 'Ruby on Rails'
+            elif any(cookie.name.upper() == 'JSESSIONID' for cookie in cookies):
+                self.server_info['Framework_Hint'] = 'Java (JSP/Servlets)'
+            
+            self._headers_analyzed_for_target = True
+            print(f"[*] Server/Framework Info for {self.target_url}: {self.server_info}")
 
     def _parse_robots_txt(self):
         """
@@ -223,10 +195,74 @@ class MultiWebScanner:
             
         try:
             response = self.session.get(url, timeout=timeout)
+            # Analyze headers for the main target domain responses
+            if urlparse(url).netloc == self.base_domain:
+                self._analyze_response_headers(response)
             return response
         except requests.RequestException as e:
             print(f"[!] {url} 접근 중 오류 발생: {e}")
             return None
+
+    def _extract_js_links(self, soup, page_url):
+        """Extracts JavaScript file URLs from script tags."""
+        js_links = set()
+        if not soup:
+            return list(js_links)
+        for script_tag in soup.find_all("script", src=True):
+            js_src = script_tag.get("src")
+            if js_src and js_src.lower().endswith('.js'):
+                full_js_url = urljoin(page_url, js_src)
+                # Ensure it's within the same base domain and not already processed
+                if urlparse(full_js_url).netloc == self.base_domain:
+                    js_links.add(full_js_url)
+        return list(js_links)
+
+    def _parse_js_for_endpoints(self, js_content, page_url_where_script_was_found):
+        """Parses JavaScript content for potential API endpoint paths using regex."""
+        if not js_content:
+            return []
+        
+        found_paths = set()
+        # Regex patterns to find API-like paths in strings or fetch/axios calls
+        # These are examples and might need refinement
+        patterns = [
+            r"""fetch\s*\(\s*['"]((?:[^'"\s]|\\')+)['"]""",  # fetch('/api/users')
+            r"""axios\.(?:get|post|put|delete|request)\s*\(\s*['"]((?:[^'"\s]|\\')+)['"]""", # axios.get('/api/data')
+            r"""['"]((?:\/[a-zA-Z0-9_.-]+)*(?:\/(api|v\d+|rest|service|data|user|auth)\S*?))['"]""", # '/api/v1/items', '/data/config'
+            r"""['"](\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+(?:[?#]\S*)?)['"]""" # General relative paths like '/path/subpath'
+        ]
+        
+        for pattern in patterns:
+            for match in re.finditer(pattern, js_content):
+                path = match.group(1)
+                if path.startswith('http://') or path.startswith('https://') or path.startswith('//'):
+                    # If it's an absolute or protocol-relative URL, check domain
+                    parsed_path = urlparse(path)
+                    if parsed_path.netloc and parsed_path.netloc == self.base_domain:
+                        found_paths.add(urljoin(self.target_url, parsed_path.path)) # Normalize
+                elif path.startswith('/'):
+                    # Root-relative path
+                    found_paths.add(urljoin(self.target_url, path))
+                else:
+                    # Potentially relative path, resolve against the page URL where script was found
+                    # This is a simplification; true relative path resolution in JS can be complex
+                    if not any(c in path for c in ['<', '>', '{', '}']): # Basic check to avoid HTML/template snippets
+                        found_paths.add(urljoin(page_url_where_script_was_found, path))
+                        
+        # Filter out common non-API file extensions and very short paths
+        filtered_endpoints = set()
+        for p in found_paths:
+            parsed_p = urlparse(p)
+            # Remove query params and fragments for base endpoint scanning
+            base_p_path = parsed_p.path 
+            if base_p_path and not any(base_p_path.lower().endswith(ext) for ext in ['.js', '.css', '.html', '.png', '.jpg', '.gif', '.svg', '.woff', '.ttf']) and len(base_p_path) > 3:
+                 # Construct full URL with scheme and netloc from target_url
+                full_endpoint_url = urljoin(self.target_url, base_p_path)
+                if urlparse(full_endpoint_url).netloc == self.base_domain: # Final check
+                    filtered_endpoints.add(full_endpoint_url)
+        
+        print(f"[*] JS Parsing: Found potential API paths: {filtered_endpoints}")
+        return list(filtered_endpoints)
 
     def _check_directory_listing_patterns(self, text_content):
         """
@@ -361,7 +397,7 @@ class MultiWebScanner:
     def crawl_recursive(self, current_url, visited, depth, max_depth):
         """
         재귀적으로 내부 링크를 방문하며 각 페이지에서 딕셔너리 스캔을 진행합니다.
-        제외된 URL은 크롤링하지 않습니다.
+        제외된 URL은 크롤링하지 않습니다. 또한 JS 파일에서 API 엔드포인트를 찾아 스캔합니다.
         """
         if depth > max_depth:
             print(f"[*] 최대 깊이 도달: {current_url} (Depth: {depth})")
@@ -376,27 +412,39 @@ class MultiWebScanner:
         print(f"[+] 크롤링 (Depth: {depth}) : {current_url}")
         visited.add(current_url)
         
-        # 현재 URL에 대해 항상 딕셔너리 스캔 시도
-        # (단, 이미 해당 URL 루트로 스캔한 적이 없다면)
-        # current_url 자체가 디렉토리일 수 있으므로, 해당 URL을 base로 스캔
-        parsed_current_url = urlparse(current_url)
-        # URL이 '/'로 끝나지 않으면, 마지막 세그먼트를 제거하여 부모 디렉토리를 base로 사용하거나,
-        # 현재 URL 자체를 base로 사용할지 결정 필요.
-        # 여기서는 현재 URL을 base로 하여 딕셔너리 스캔을 시도.
-        # 예를 들어 example.com/path1/ 에 대해 딕셔너리 스캔
-        # example.com/path1/file.html 에 대해서도 example.com/path1/file.html/admin/ 등을 시도하게 됨.
-        # 이는 의도와 다를 수 있으므로, URL이 디렉토리 형태일 때만 스캔하도록 조정 가능.
-        # 현재는 모든 발견된 URL에 대해 딕셔너리 스캔을 시도.
         self.dictionary_scan(current_url)
 
         response = self.fetch_url(current_url)
         if not response:
             return
-
-        # 프레임워크 분석은 참고용으로 남겨둘 수 있으나, 딕셔너리 스캔 결정에는 사용하지 않음
-        # self.analyze_framework(response) 
+        
+        # Analyze headers if not done yet (redundant if fetch_url does it, but safe)
+        if urlparse(current_url).netloc == self.base_domain:
+            self._analyze_response_headers(response)
 
         soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # --- JavaScript Link Extraction and API Endpoint Scanning ---
+        if soup: # Ensure soup object is not None
+            js_file_urls = self._extract_js_links(soup, current_url)
+            for js_url in js_file_urls:
+                if js_url not in self.processed_js_files:
+                    print(f"[+] JS 파일 발견 및 파싱 시도: {js_url}")
+                    self.processed_js_files.add(js_url)
+                    js_response = self.fetch_url(js_url) # Use fetch_url to respect exclusions etc.
+                    if js_response and js_response.text:
+                        # Pass current_url as the page where script was found for relative path resolution
+                        api_endpoints = self._parse_js_for_endpoints(js_response.text, current_url) 
+                        for endpoint_url_base in api_endpoints:
+                            if endpoint_url_base not in self.js_discovered_api_endpoints and not self.is_excluded(endpoint_url_base):
+                                print(f"[+] JS에서 API 엔드포인트 발견, 딕셔너리 스캔 시도: {endpoint_url_base}")
+                                self.js_discovered_api_endpoints.add(endpoint_url_base)
+                                # Perform dictionary scan on the discovered API base path
+                                self.dictionary_scan(endpoint_url_base.rstrip('/')) 
+                    else:
+                        print(f"[-] JS 파일 내용을 가져오지 못함: {js_url}")
+        # --- End JavaScript Link Extraction ---
+
         links = []
         for a in soup.find_all('a', href=True):
             href = a['href']
@@ -439,12 +487,17 @@ class MultiWebScanner:
     def run(self, max_depth=2):
         """
         스캔 실행 함수.
-        1. (선택적) 로그인 시도.
-        2. 초기 target_url에 대해 딕셔너리 스캔 수행.
-        3. target_url부터 재귀적 크롤링 시작.
+        1. 초기 target_url에 대해 딕셔너리 스캔 수행.
+        2. target_url부터 재귀적 크롤링 시작.
         """
-        if self.username and self.password:
-            self._attempt_login() # 세션 쿠키가 설정될 수 있음
+        # if self.username and self.password: # REMOVED
+        #     self._attempt_login() # REMOVED
+
+        # Attempt to fetch the main target URL to analyze its headers early
+        initial_response = self.fetch_url(self.target_url)
+        if initial_response and not self._headers_analyzed_for_target:
+             self._analyze_response_headers(initial_response)
+
 
         visited = set()
         
@@ -458,4 +511,4 @@ class MultiWebScanner:
         print(f"[+] 재귀적 크롤링 시작: {self.target_url}")
         self.crawl_recursive(self.target_url, visited, depth=0, max_depth=max_depth)
         
-        return self.found_directories
+        return {"directories": self.found_directories, "server_info": self.server_info}

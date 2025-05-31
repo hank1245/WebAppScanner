@@ -10,8 +10,7 @@ export const scanWebsite = async (
   respectRobotsTxt,
   dictionaryOperations,
   useDefaultDictionary,
-  username, // Added username
-  password // Added password
+  sessionCookies // ADDED
 ) => {
   const payload = {
     target_urls: targetUrls,
@@ -21,8 +20,7 @@ export const scanWebsite = async (
     respect_robots_txt: respectRobotsTxt,
     dictionary_operations: dictionaryOperations || [],
     use_default_dictionary: useDefaultDictionary,
-    username: username || null, // Add username to payload
-    password: password || null, // Add password to payload
+    session_cookies_string: sessionCookies || null, // ADDED
   };
   const response = await axios.post(`${API_BASE_URL}/scan`, payload);
   return response.data.result;

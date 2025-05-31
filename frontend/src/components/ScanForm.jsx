@@ -14,8 +14,7 @@ const ScanForm = ({ onScan }) => {
     operations: [],
     useDefault: true,
   });
-  const [username, setUsername] = useState(""); // New state for username
-  const [password, setPassword] = useState(""); // New state for password
+  const [sessionCookies, setSessionCookies] = useState(""); // ADDED
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -46,8 +45,7 @@ const ScanForm = ({ onScan }) => {
       respectRobotsTxt,
       dictionaryConfig.operations,
       dictionaryConfig.useDefault,
-      username, // Pass username
-      password // Pass password
+      sessionCookies // ADDED
     );
   };
 
@@ -89,39 +87,21 @@ const ScanForm = ({ onScan }) => {
           />
         </div>
 
-        <div className={styles.formRow}>
-          <div className={styles.formGroup}>
-            <label htmlFor="username">
-              <span className={styles.formLabel}>
-                Login Username (Optional)
-              </span>
-              <span className={styles.formHint}>For sites requiring login</span>
-            </label>
-            <input
-              id="username"
-              type="text"
-              placeholder="Enter username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className={styles.formControl}
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label htmlFor="password">
-              <span className={styles.formLabel}>
-                Login Password (Optional)
-              </span>
-              <span className={styles.formHint}>Leave blank if no login</span>
-            </label>
-            <input
-              id="password"
-              type="password"
-              placeholder="Enter password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={styles.formControl}
-            />
-          </div>
+        <div className={styles.formGroup}>
+          <label htmlFor="sessionCookies">
+            <span className={styles.formLabel}>Session Cookies (Optional)</span>
+            <span className={styles.formHint}>
+              E.g., cookie1=value1; cookie2=value2
+            </span>
+          </label>
+          <textarea
+            id="sessionCookies"
+            placeholder="Enter session cookies as a string (e.g., PHPSESSID=abc; user_token=xyz)"
+            value={sessionCookies}
+            onChange={(e) => setSessionCookies(e.target.value)}
+            className={styles.formControl}
+            rows="3"
+          />
         </div>
 
         <div className={styles.formRow}>

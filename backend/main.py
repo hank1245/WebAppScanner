@@ -30,37 +30,31 @@ class ScanRequest(BaseModel):
     target_urls: List[str]
     mode: str = 'normal'
     dictionary_operations: Optional[List[DictionaryOperation]] = None
-    use_default_dictionary: bool = True  # 기본 딕셔너리 사용 여부
+    use_default_dictionary: bool = True
     exclusions: list[str] = []
     max_depth: int = 2
     respect_robots_txt: bool = True
-    username: Optional[str] = None # Added username
-    password: Optional[str] = None # Added password
+    session_cookies_string: Optional[str] = None # ADDED
 
 @app.post("/scan")
 async def scan(request: ScanRequest):
-    all_results = {}
-    
-    # 딕셔너리 목록 생성
+    all_results_by_target = {} # Changed to store results per target
+
+    # 딕셔너리 준비
     final_dictionary = []
-    
-    # 기본 딕셔너리 사용이 활성화된 경우 추가
     if request.use_default_dictionary:
         final_dictionary.extend(DEFAULT_DICTIONARY)
     
-    # 사용자 정의 딕셔너리 작업 처리
     if request.dictionary_operations:
-        for operation in request.dictionary_operations:
-            if operation.type == "add":
-                # 추가 작업의 경우 paths의 항목들을 딕셔너리에 추가
-                for path in operation.paths:
-                    if path and path not in final_dictionary:  # 중복 방지
-                        final_dictionary.append(path)
-            elif operation.type == "remove":
-                # 제거 작업의 경우 paths의 항목들을 딕셔너리에서 제거
-                final_dictionary = [p for p in final_dictionary if p not in operation.paths]
+        current_dict_set = set(final_dictionary)
+        for op in request.dictionary_operations:
+            if op.action == "add":
+                current_dict_set.add(op.item)
+            elif op.action == "remove":
+                current_dict_set.discard(op.item)
+        final_dictionary = sorted(list(current_dict_set))
     
-    # 빈 딕셔너리인 경우 기본값 사용
+    # 빈 딕셔너리인 경우 기본값 사용 (이중 확인)
     if not final_dictionary:
         final_dictionary = DEFAULT_DICTIONARY
     
@@ -68,17 +62,17 @@ async def scan(request: ScanRequest):
         for target_url_item in request.target_urls:
             scanner = MultiWebScanner(
                 target_url=target_url_item,
-                dictionary=final_dictionary,  # 최종 딕셔너리 전달
+                dictionary=final_dictionary,
                 mode=request.mode,
                 exclusions=request.exclusions,
                 respect_robots_txt=request.respect_robots_txt,
-                username=request.username, # Pass username
-                password=request.password  # Pass password
+                session_cookies_string=request.session_cookies_string # ADDED
             )
-            result_item = scanner.run(max_depth=request.max_depth)
-            all_results.update(result_item)
+            # scanner.run() now returns a dict: {"directories": {...}, "server_info": {...}}
+            result_item_data = scanner.run(max_depth=request.max_depth)
+            all_results_by_target[target_url_item] = result_item_data
         
-        return {"result": all_results}
+        return {"result": all_results_by_target} # Return results keyed by target URL
     except Exception as e:
         print(f"Error during scan process: {e}")
         raise HTTPException(status_code=500, detail=f"An error occurred during scanning: {str(e)}")

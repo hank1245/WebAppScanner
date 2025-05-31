@@ -19,9 +19,10 @@ export const useReportGenerator = (results, scanMetadata) => {
         1000,
       targets_scanned_count: scanMetadata.targets.length,
       targets_list: scanMetadata.targets,
+      server_information: scanMetadata.serverInfos,
       max_depth: scanMetadata.maxDepth,
       respect_robots_txt: scanMetadata.respectRobotsTxt,
-      credentials_provided: scanMetadata.credentialsProvided, // 이미 반영됨
+      session_cookies_provided: scanMetadata.sessionCookiesProvided, // ADDED
       exclusions_list: scanMetadata.exclusions,
       checked_paths_count: Object.keys(results).length,
       all_attempted_paths_details: Object.entries(results).map(

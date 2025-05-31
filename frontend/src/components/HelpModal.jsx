@@ -67,6 +67,38 @@ const HelpModal = ({ isOpen, onClose }) => {
             long-term or in reports.
           </p>
         </div>
+        <div className={styles.helpSection}>
+          <h4>Session Cookies (Optional)</h4>
+          <p>
+            If the target website requires authentication to access certain
+            areas, you can provide your browser's session cookie string. The
+            scanner will use these cookies for its requests.
+          </p>
+          <p>
+            <strong>How to get cookies:</strong>
+            <ol>
+              <li>Log in to the target website in your browser.</li>
+              <li>Open your browser's Developer Tools (usually F12).</li>
+              <li>
+                Go to the "Application" (Chrome/Edge) or "Storage" (Firefox)
+                tab.
+              </li>
+              <li>Find "Cookies" under the Storage section for the website.</li>
+              <li>
+                Copy the relevant session cookie(s) as a string. For example,
+                <code>cookieName1=cookieValue1; cookieName2=cookieValue2</code>.
+                Ensure you copy only the necessary session cookies.
+              </li>
+            </ol>
+          </p>
+          <p>
+            <strong>Note:</strong> Providing session cookies allows the scanner
+            to operate as if you are logged in. Be cautious with sensitive
+            session information. Cookies are sent to the backend to be used in
+            requests but are not stored long-term or in reports (only a flag
+            indicating if they were provided is stored).
+          </p>
+        </div>
       </div>
     </div>
   );
