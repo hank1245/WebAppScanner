@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  backend-test: # Renamed job for clarity
+  backend-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,11 +22,12 @@ jobs:
       - name: Install backend dependencies
         run: |
           python -m pip install --upgrade pip
-          # Assuming requirements.txt is in the backend directory
-          # If you have a requirements.txt in ./backend, use:
-          # pip install -r backend/requirements.txt
-          # For now, installing specific dependencies as per original file:
-          pip install requests requests-mock beautifulsoup4
+          # backend 디렉토리의 requirements.txt를 사용하거나 필요한 패키지를 직접 명시
+          # 예: pip install requests beautifulsoup4 fastapi uvicorn python-multipart
+          # 현재 프로젝트 구조에서는 backend 폴더로 이동 후 설치 또는 -r backend/requirements.txt 사용
+          if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
+          # 테스트에 필요한 최소한의 패키지 (FastAPI 앱 테스트를 위해 fastapi, uvicorn 포함)
+          pip install requests beautifulsoup4 fastapi uvicorn python-multipart httpx # TestClient는 httpx 필요
       - name: Run backend tests
         run: |
           cd backend
@@ -36,18 +37,15 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend # Set default working directory for frontend steps
+        working-directory: ./frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "16" # Using version from your frontend Dockerfile
-
+          node-version: "16"
       - name: Install frontend dependencies
         run: npm install
-
       - name: Run frontend tests
         run: npm test
