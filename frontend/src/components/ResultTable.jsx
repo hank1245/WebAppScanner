@@ -4,7 +4,8 @@ import styles from "../styles/ResultTable.module.css"; // CSS 모듈 경로 확�
 const ResultTable = ({ results }) => {
   const [sortField, setSortField] = useState("url");
   const [sortDirection, setSortDirection] = useState("asc");
-  const [statusFilter, setStatusFilter] = useState("ALL_SUCCESSFUL");
+  // 초기 필터를 "ALL_SUCCESSFUL"로 설정하여 일반적인 성공 경로와 발견된 API 엔드포인트를 함께 표시
+  const [statusFilter, setStatusFilter] = useState("ALL_SUCCESSFUL_AND_API");
 
   const processedEntries = useMemo(() => {
     if (!results || Object.keys(results).length === 0) {
@@ -21,9 +22,26 @@ const ResultTable = ({ results }) => {
       filtered = processedEntries.filter(([_, info]) => {
         if (!info) return false;
         const statusCodeStr = String(info.status_code);
+        const source = info.source || "unknown";
+
         switch (statusFilter) {
-          case "ALL_SUCCESSFUL":
-            return statusCodeStr === "200" || statusCodeStr === "403";
+          case "ALL_SUCCESSFUL_AND_API": // 기본 필터: 일반 성공 + JS API 성공
+            return (
+              (statusCodeStr === "200" || statusCodeStr === "403") &&
+              (source !== "js_api" ||
+                (source === "js_api" &&
+                  (statusCodeStr === "200" || statusCodeStr === "403")))
+            );
+          case "FOUND_API_ENDPOINTS": // JS API 소스이고 200 또는 403인 경우
+            return (
+              source === "js_api" &&
+              (statusCodeStr === "200" || statusCodeStr === "403")
+            );
+          case "ALL_SUCCESSFUL_NO_API": // API 제외한 성공
+            return (
+              source !== "js_api" &&
+              (statusCodeStr === "200" || statusCodeStr === "403")
+            );
           case "200":
             return statusCodeStr === "200";
           case "403":
@@ -35,13 +53,13 @@ const ResultTable = ({ results }) => {
               statusCodeStr === "NO_RESPONSE_OR_ERROR" ||
               statusCodeStr === "SCANNER_TASK_ERROR"
             );
-          case "JS_API_SUCCESSFUL":
-            return (
-              (statusCodeStr === "200" || statusCodeStr === "403") &&
-              info.source === "js_api"
-            );
-          case "JS_API_ALL":
-            return info.source === "js_api";
+          // case "JS_API_SUCCESSFUL": // FOUND_API_ENDPOINTS로 대체
+          //   return (
+          //     (statusCodeStr === "200" || statusCodeStr === "403") &&
+          //     info.source === "js_api"
+          //   );
+          case "JS_API_ALL_ATTEMPTED": // JS API 소스의 모든 시도 (404 포함)
+            return source === "js_api";
           default:
             return true;
         }
@@ -82,9 +100,18 @@ const ResultTable = ({ results }) => {
         case "listing":
           const listingA = safeGet(infoA, "directory_listing", false);
           const listingB = safeGet(infoB, "directory_listing", false);
-          if (listingA === listingB) comparison = 0;
+          if (safeGet(infoA, "source", "unknown") === "js_api")
+            comparison = -1; // API는 항상 아래로 (또는 별도 처리)
+          else if (safeGet(infoB, "source", "unknown") === "js_api")
+            comparison = 1;
+          else if (listingA === listingB) comparison = 0;
           else if (listingA) comparison = 1;
           else comparison = -1;
+          break;
+        case "source":
+          comparison = String(
+            safeGet(infoA, "source", "unknown")
+          ).localeCompare(String(safeGet(infoB, "source", "unknown")));
           break;
         default:
           comparison = 0;
@@ -113,6 +140,7 @@ const ResultTable = ({ results }) => {
       )
     )
       return { color: "#6c757d" }; // Grey
+    if (codeStr === "404") return { color: "#dc3545" }; // Red for 404
     if (codeStr && codeStr.startsWith("4")) return { color: "#dc3545" }; // Red for other 4xx
     if (codeStr && codeStr.startsWith("5"))
       return { color: "#dc3545", fontWeight: "bold" }; // Red for 5xx
@@ -134,152 +162,150 @@ const ResultTable = ({ results }) => {
 
   // 필터 옵션 정의
   const filterOptions = [
-    { value: "ALL_SUCCESSFUL", label: "Successful (200, 403)" },
+    { value: "ALL_SUCCESSFUL_AND_API", label: "Found (Dirs & APIs: 200, 403)" },
+    { value: "FOUND_API_ENDPOINTS", label: "Found API Endpoints (200, 403)" },
+    {
+      value: "ALL_SUCCESSFUL_NO_API",
+      label: "Found Directories (200, 403, No APIs)",
+    },
     { value: "ALL", label: "All Attempted Paths" },
     { value: "200", label: "Status 200 Only" },
     { value: "403", label: "Status 403 Only" },
+    {
+      value: "JS_API_ALL_ATTEMPTED",
+      label: "All Attempted API Paths (incl. 404)",
+    },
     { value: "EXCLUDED", label: "Excluded Paths" },
-    { value: "NO_RESPONSE_OR_ERROR", label: "Errors / No Response" },
-    { value: "JS_API_SUCCESSFUL", label: "JS API (Successful)" },
-    { value: "JS_API_ALL", label: "JS API (All Paths)" },
+    { value: "NO_RESPONSE_OR_ERROR", label: "Errors/No Response" },
   ];
 
+  const getSourceDisplayName = (source) => {
+    switch (source) {
+      case "initial":
+        return "Initial Scan";
+      case "crawl":
+        return "Crawled Page Scan";
+      case "js_api":
+        return "JS Discovered API";
+      default:
+        return source || "Unknown";
+    }
+  };
+
   return (
-    <>
+    <div className={styles.resultTableContainer}>
       <div className={styles.filterControls}>
-        <label htmlFor="statusFilter">Filter Results: </label>
+        <label htmlFor="statusFilter">Filter by:</label>
         <select
           id="statusFilter"
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
           className={styles.filterSelect}
         >
-          {filterOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
+          {filterOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
       </div>
 
-      {filteredAndSortedEntries.length === 0 ? (
+      {filteredAndSortedEntries.length === 0 && (
         <div className={styles.emptyState}>
-          <div className={styles.emptyIcon}>🔍</div>
+          <div className={styles.emptyIcon}>🧐</div>
           <p>No results match the current filter.</p>
-          <p className={styles.emptyHint}>
-            Try adjusting the filter or scan new targets.
-          </p>
-        </div>
-      ) : (
-        <div className={styles.tableResponsive}>
-          <table className={styles.resultTable}>
-            <thead>
-              <tr>
-                <th
-                  className={
-                    sortField === "url"
-                      ? `${styles.sorted} ${styles[sortDirection]}`
-                      : ""
-                  }
-                  onClick={() => handleSort("url")}
-                >
-                  URL{" "}
-                  {sortField === "url" && (
-                    <span className={styles.sortIcon}></span>
-                  )}
-                </th>
-                <th
-                  className={
-                    sortField === "status"
-                      ? `${styles.sorted} ${styles[sortDirection]}`
-                      : ""
-                  }
-                  onClick={() => handleSort("status")}
-                >
-                  Status{" "}
-                  {sortField === "status" && (
-                    <span className={styles.sortIcon}></span>
-                  )}
-                </th>
-                <th
-                  className={
-                    sortField === "length"
-                      ? `${styles.sorted} ${styles[sortDirection]}`
-                      : ""
-                  }
-                  onClick={() => handleSort("length")}
-                >
-                  Length{" "}
-                  {sortField === "length" && (
-                    <span className={styles.sortIcon}></span>
-                  )}
-                </th>
-                <th
-                  className={
-                    sortField === "listing"
-                      ? `${styles.sorted} ${styles[sortDirection]}`
-                      : ""
-                  }
-                  onClick={() => handleSort("listing")}
-                >
-                  Listing{" "}
-                  {sortField === "listing" && (
-                    <span className={styles.sortIcon}></span>
-                  )}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredAndSortedEntries.map(([url, info]) => (
-                <tr key={url}>
-                  <td className={styles.urlCell}>
-                    <a
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={url}
-                    >
-                      {" "}
-                      {url}{" "}
-                    </a>
-                    {info && info.source === "js_api" && (
-                      <span className={`${styles.badge} ${styles.info}`}>
-                        JS API
-                      </span>
-                    )}
-                  </td>
-                  <td
-                    style={getStatusStyle(info ? String(info.status_code) : "")}
-                  >
-                    {info ? String(info.status_code) : "N/A"}
-                  </td>
-                  <td>
-                    {info && info.content_length !== undefined
-                      ? info.content_length.toLocaleString()
-                      : "N/A"}
-                  </td>
-                  <td>
-                    {info && info.directory_listing !== undefined ? (
-                      info.directory_listing ? (
-                        <span className={`${styles.badge} ${styles.success}`}>
-                          Enabled
-                        </span>
-                      ) : (
-                        <span className={`${styles.badge} ${styles.neutral}`}>
-                          Disabled
-                        </span>
-                      )
-                    ) : (
-                      "N/A"
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       )}
-    </>
+
+      {filteredAndSortedEntries.length > 0 && (
+        <table className={styles.resultTable}>
+          <thead>
+            <tr>
+              <th onClick={() => handleSort("url")}>
+                URL
+                {sortField === "url" && (
+                  <span className={styles.sortIcon}>
+                    {sortDirection === "asc" ? "▲" : "▼"}
+                  </span>
+                )}
+              </th>
+              <th onClick={() => handleSort("status")}>
+                Status
+                {sortField === "status" && (
+                  <span className={styles.sortIcon}>
+                    {sortDirection === "asc" ? "▲" : "▼"}
+                  </span>
+                )}
+              </th>
+              <th onClick={() => handleSort("length")}>
+                Length
+                {sortField === "length" && (
+                  <span className={styles.sortIcon}>
+                    {sortDirection === "asc" ? "▲" : "▼"}
+                  </span>
+                )}
+              </th>
+              <th onClick={() => handleSort("listing")}>
+                Dir. Listing
+                {sortField === "listing" && (
+                  <span className={styles.sortIcon}>
+                    {sortDirection === "asc" ? "▲" : "▼"}
+                  </span>
+                )}
+              </th>
+              <th onClick={() => handleSort("source")}>
+                Source
+                {sortField === "source" && (
+                  <span className={styles.sortIcon}>
+                    {sortDirection === "asc" ? "▲" : "▼"}
+                  </span>
+                )}
+              </th>
+              <th>Note</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAndSortedEntries.map(([url, info]) => (
+              <tr key={url}>
+                <td className={styles.urlCell}>
+                  <a href={url} target="_blank" rel="noopener noreferrer">
+                    {url}
+                  </a>
+                </td>
+                <td style={getStatusStyle(String(info.status_code))}>
+                  {String(info.status_code)}
+                </td>
+                <td>{info.content_length}</td>
+                <td>
+                  {info.source === "js_api" ? (
+                    <span className={styles.badgeNeutral}>N/A (API)</span>
+                  ) : info.directory_listing ? (
+                    <span className={styles.badgeDanger}>Enabled</span>
+                  ) : (
+                    <span className={styles.badgeSuccess}>Disabled</span>
+                  )}
+                </td>
+                <td>
+                  <span
+                    className={`${styles.badge} ${
+                      styles[
+                        `sourceBadge${getSourceDisplayName(info.source).replace(
+                          /\s+/g,
+                          ""
+                        )}`
+                      ] || styles.badgeNeutral
+                    }`}
+                  >
+                    {getSourceDisplayName(info.source)}
+                  </span>
+                </td>
+                <td>{info.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 };
 

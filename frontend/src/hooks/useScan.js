@@ -102,10 +102,20 @@ export const useScan = () => {
   const getScanSummary = () => {
     if (!results || !scanMetadata || !scanMetadata.endTime) return null;
 
-    // successfulEntries should be calculated based on the 'results' state (mergedDirectories)
-    const successfulEntries = Object.entries(results).filter(
+    const allEntries = Object.entries(results);
+
+    const successfulDirEntries = allEntries.filter(
       ([_, info]) =>
         info &&
+        (String(info.status_code) === "200" ||
+          String(info.status_code) === "403") &&
+        info.source !== "js_api" // API에서 온 것은 제외
+    );
+
+    const foundApiEndpoints = allEntries.filter(
+      ([_, info]) =>
+        info &&
+        info.source === "js_api" &&
         (String(info.status_code) === "200" ||
           String(info.status_code) === "403")
     );
@@ -116,8 +126,10 @@ export const useScan = () => {
 
     return {
       duration: duration.toFixed(2),
-      totalPaths: Object.keys(results).length,
-      successfulPaths: successfulEntries.length,
+      totalPaths: allEntries.length,
+      // successfulPaths는 이제 순수 디렉토리 성공만 카운트
+      successfulPaths: successfulDirEntries.length,
+      foundApiEndpoints: foundApiEndpoints.length, // 새로 추가된 항목
       targets: scanMetadata.targets.length,
     };
   };

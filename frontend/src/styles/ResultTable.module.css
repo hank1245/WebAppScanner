@@ -88,36 +88,64 @@
   letter-spacing: 0.5px;
 }
 
-.badge.success {
+.badgeDanger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.badgeSuccess {
   background-color: #d4edda;
   color: #155724;
 }
 
-.badge.neutral {
+.badgeNeutral {
   background-color: #e2e3e5;
-  color: #6c757d;
+  color: #383d41;
+}
+
+/* Source specific badges */
+.sourceBadgeInitialScan {
+  background-color: #cce5ff;
+  color: #004085;
+}
+
+.sourceBadgeCrawledPageScan {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.sourceBadgeJSDiscoveredAPI {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.filterControls {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filterSelect {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
 }
 
 .emptyState {
   text-align: center;
-  padding: 3rem 2rem;
+  padding: 2rem;
   color: #6c757d;
 }
 
 .emptyIcon {
   font-size: 3rem;
   margin-bottom: 1rem;
-  opacity: 0.6;
-}
-
-.emptyState p {
-  margin: 0.5rem 0;
-  font-size: 1.1rem;
 }
 
 .emptyHint {
-  font-size: 0.9rem !important;
-  opacity: 0.8;
+  font-size: 0.9rem;
+  color: #adb5bd;
 }
 
 @media (max-width: 768px) {

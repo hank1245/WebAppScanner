@@ -18,6 +18,14 @@ HEADERS = {
                    'Chrome/110.0.0.0 Safari/537.36')
 }
 
+# API 경로 스캔을 위한 특화 사전 (예시)
+DEFAULT_API_DICTIONARY = [
+    "users", "user", "items", "products", "orders", "cart", "auth", "login", "logout",
+    "register", "profile", "settings", "config", "status", "health", "ping", "api-docs",
+    "swagger", "openapi", "graphql", "v1", "v2", "v3", "test", "dev", "prod", "data",
+    "metrics", "logs", "admin", "management", "payment", "search", "notifications"
+]
+
 class MultiWebScanner:
     def __init__(self, target_url, dictionary, mode='normal', exclusions=None, respect_robots_txt=True, session_cookies_string: Optional[str] = None):
         """
@@ -26,7 +34,8 @@ class MultiWebScanner:
         respect_robots_txt: robots.txt의 Disallow 규칙을 따를지 여부
         """
         self.target_url = target_url.rstrip('/')
-        self.dictionary = dictionary
+        self.dictionary = dictionary # 일반 경로용 사전
+        self.api_dictionary = DEFAULT_API_DICTIONARY # API 경로용 사전
         self.base_domain = urlparse(self.target_url).netloc
         self.found_directories = {}
         self.dictionary_scanned = set()
@@ -343,6 +352,7 @@ class MultiWebScanner:
         주어진 base_url과 딕셔너리 항목을 조합하여 URL을 요청한 후,
         디렉토리 리스팅 여부와 상태 코드를 확인.
         제외된 URL은 스캔하지 않음.
+        API 경로는 디렉토리 리스팅 분석을 수행하지 않음.
         """
         url = f"{base_url.rstrip('/')}/{dir_name.lstrip('/')}"
         
@@ -351,23 +361,44 @@ class MultiWebScanner:
             return url, {
                 'status_code': 'EXCLUDED',
                 'content_length': 0,
-                'directory_listing': False,
+                'directory_listing': False, # API 경로의 경우 항상 False
                 'note': 'URL excluded by configuration or robots.txt.',
-                'source': source # source 정보 추가
+                'source': source 
             }
 
         response = self.fetch_url(url) 
         if response:
             status_code = response.status_code
             content_length = len(response.content)
-            directory_listing = self.analyze_directory_listing(response) if status_code == 200 else False
+            directory_listing = False # 기본값 False
+            note = f'Scan attempted. Status: {status_code}' # 기본 노트
+
+            if source == 'js_api':
+                # API 경로는 디렉토리 리스팅 분석을 수행하지 않음
+                if status_code == 200:
+                    note = 'API endpoint/path responded (200).'
+                elif status_code == 403:
+                    note = 'API endpoint/path access denied (403).'
+                elif status_code == 404:
+                    note = 'API endpoint/path not found (404).'
+                # 다른 상태 코드에 대한 노트는 기본값 사용
+            else: # 일반 경로 스캔
+                if status_code == 200:
+                    directory_listing = self.analyze_directory_listing(response)
+                    if directory_listing:
+                        note = 'Directory listing found (200).'
+                    else:
+                        note = 'Path found (200).'
+                elif status_code == 403:
+                     note = 'Access denied (403).'
+                # 다른 상태 코드에 대한 노트는 기본값 사용
             
             return url, {
                 'status_code': status_code,
                 'content_length': content_length,
                 'directory_listing': directory_listing,
-                'note': f'Scan attempted. Status: {status_code}' if status_code != 200 else 'Scan successful.',
-                'source': source # source 정보 추가
+                'note': note,
+                'source': source 
             }
         else:
             return url, {
@@ -375,25 +406,27 @@ class MultiWebScanner:
                 'content_length': 0,
                 'directory_listing': False,
                 'note': 'Failed to fetch URL (request error or excluded by fetch_url).',
-                'source': source # source 정보 추가
+                'source': source 
             }
 
     def dictionary_scan(self, base_url, source='initial'): # source 기본값을 'initial'로 변경
         """
         주어진 base_url에 대해 딕셔너리 목록으로 디렉토리 존재 여부를 멀티스레딩으로 스캔.
+        source에 따라 일반 사전 또는 API 특화 사전을 사용.
         """
-        # 다른 출처의 스캔을 허용하기 위해 self.dictionary_scanned 검사 로직 수정 또는 제거 고려.
-        # 여기서는 일단 유지하되, source에 따라 다르게 처리할 수 있음을 인지.
-        # if base_url in self.dictionary_scanned and source not in ['js_api']: # js_api는 재스캔 허용 등
-        #     print(f"[*] 이미 일반 스캔 완료 (Source: {source}): {base_url}")
-        #     return
+        # ... (기존 dictionary_scanned 검사 로직은 유지하거나 source에 따라 조정 가능)
             
-        print(f"[+] 딕셔너리 스캔 시작 (Source: {source}): {base_url}")
+        current_dictionary = self.api_dictionary if source == 'js_api' else self.dictionary
+        if not current_dictionary:
+            print(f"[-] {source} 스캔을 위한 사전이 비어있습니다: {base_url}")
+            return
+
+        print(f"[+] {'API' if source == 'js_api' else '일반'} 딕셔너리 스캔 시작 (Source: {source}): {base_url} (사전 크기: {len(current_dictionary)})")
         results = {}
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             future_to_dir = {
-                executor.submit(self.dictionary_scan_single, base_url, dir_name, source): dir_name # source 전달
-                for dir_name in self.dictionary
+                executor.submit(self.dictionary_scan_single, base_url, dir_name, source): dir_name
+                for dir_name in current_dictionary # 현재 source에 맞는 사전 사용
             }
             for future in concurrent.futures.as_completed(future_to_dir):
                 original_dir_name = future_to_dir[future]
@@ -402,17 +435,16 @@ class MultiWebScanner:
                     _, scan_info = future.result() 
                     results[attempted_url] = scan_info 
                 except Exception as e:
-                    print(f"[!] 딕셔너리 항목 {original_dir_name} 스캔 작업 중 예외 발생 (Source: {source}): {e}")
+                    print(f"[!] {'API ' if source == 'js_api' else ''}딕셔너리 항목 {original_dir_name} 스캔 작업 중 예외 발생 (Source: {source}): {e}")
                     results[attempted_url] = {
                         'status_code': 'SCANNER_TASK_ERROR',
                         'content_length': 0,
                         'directory_listing': False,
                         'note': f'Internal error during scan attempt for {original_dir_name}: {str(e)}',
-                        'source': source # source 정보 추가
+                        'source': source 
                     }
         self.found_directories.update(results)
-        # 일반적인 크롤링이나 초기 스캔에 의해서만 dictionary_scanned에 추가
-        if source in ['initial', 'crawl']:
+        if source in ['initial', 'crawl']: # API 스캔은 dictionary_scanned에 추가하지 않음 (API 베이스 경로는 여러번 스캔될 수 있음)
             self.dictionary_scanned.add(base_url)
 
     def crawl_recursive(self, current_url, visited, depth, max_depth):

@@ -15,18 +15,20 @@ function App() {
     scanMetadata,
     rawScanData, // rawScanData도 가져옴
     handleScan,
-    getScanSummary,
+    getScanSummary, // getScanSummary 함수를 직접 사용
     scanError, // scanError 가져옴
   } = useScan();
   const { generateReport } = useReportGenerator(
     results,
     scanMetadata,
     rawScanData
-  ); // rawScanData 전달 (필요시)
+  );
 
   // HelpModal 상태 (예시)
   const [showHelp, setShowHelp] = React.useState(false);
   const toggleHelp = () => setShowHelp(!showHelp);
+
+  const scanSummaryData = getScanSummary(); // 요약 데이터 가져오기
 
   return (
     <div className={styles.app}>
@@ -45,9 +47,14 @@ function App() {
           <div className={styles.errorMessage}>{scanError}</div>
         )}{" "}
         {/* 에러 메시지 표시 */}
-        {!loading && !scanError && scanMetadata && scanMetadata.endTime && (
-          <ScanSummary summary={getScanSummary()} />
-        )}
+        {!loading &&
+          !scanError &&
+          scanSummaryData && ( // scanSummaryData 사용
+            <ScanSummary
+              summary={scanSummaryData}
+              onGenerateReport={generateReport}
+            />
+          )}
         {/* 서버 정보 표시 */}
         {!loading &&
           !scanError &&
@@ -76,18 +83,10 @@ function App() {
               ))}
             </div>
           )}
-        {!loading && !scanError && <ResultTable results={results} />}
-      </main>
-      <footer className={styles.footer}>
-        <p>
-          Directory Tracer - Scan results are for informational purposes only.
-        </p>
-        {scanMetadata && scanMetadata.endTime && (
-          <button onClick={generateReport} className={styles.reportButton}>
-            Download Report
-          </button>
+        {!loading && !scanError && Object.keys(results).length > 0 && (
+          <ResultTable results={results} />
         )}
-      </footer>
+      </main>
     </div>
   );
 }
