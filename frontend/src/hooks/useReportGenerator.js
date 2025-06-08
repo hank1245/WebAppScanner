@@ -44,25 +44,24 @@ export const useReportGenerator = (results, scanMetadata, rawScanData) => {
         exclusions_used: scanMetadata.exclusions,
         session_cookies_provided: scanMetadata.sessionCookiesProvided,
         dictionary_settings: {
-          // 사전 설정 추가
           use_default_dictionary: scanMetadata.useDefaultDictionary,
           dictionary_operations: scanMetadata.dictionaryOperations,
         },
-        server_information: scanMetadata.serverInfos, // 서버 정보 추가
+        server_information: scanMetadata.serverInfos,
       },
       summary: {
         total_targets_scanned: scanMetadata.targets.length,
         total_paths_attempted: allEntries.length,
         successful_directories_found: successfulDirEntries.length,
-        responsive_api_endpoints_found: foundApiEndpointsList.length, // JS API 중 200/403
-        total_js_api_paths_attempted: attemptedApiPathsList.length, // JS API 모든 시도
+        responsive_api_endpoints_found: foundApiEndpointsList.length,
+        total_js_api_paths_attempted: attemptedApiPathsList.length,
       },
       all_attempted_paths_details: allEntries.map(([url, info]) => ({
         url: url,
         status_code: info ? String(info.status_code) : "UNKNOWN_ERROR",
         content_length: info ? info.content_length : 0,
         directory_listing: info ? info.directory_listing : false,
-        source: info ? info.source || "unknown" : "unknown", // source 정보 추가
+        source: info ? info.source || "unknown" : "unknown",
         note:
           info && info.note
             ? info.note
@@ -83,7 +82,7 @@ export const useReportGenerator = (results, scanMetadata, rawScanData) => {
           url: url,
           status_code: info.status_code,
           content_length: info.content_length,
-          source: info.source, // 항상 'js_api'
+          source: info.source,
           note: info.note || "API Endpoint responded.",
         })
       ),

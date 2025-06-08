@@ -14,7 +14,7 @@ const ScanForm = ({ onScan }) => {
     operations: [],
     useDefault: true,
   });
-  const [sessionCookies, setSessionCookies] = useState(""); // ADDED
+  const [sessionCookies, setSessionCookies] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -45,7 +45,7 @@ const ScanForm = ({ onScan }) => {
       respectRobotsTxt,
       dictionaryConfig.operations,
       dictionaryConfig.useDefault,
-      sessionCookies // ADDED
+      sessionCookies
     );
   };
 
@@ -70,69 +70,77 @@ const ScanForm = ({ onScan }) => {
           >
             Help
           </button>
+          <h2 className={styles.formTitle}>Directory Scanner</h2>
+          <button type="submit" className={styles.submitButton}>
+            Start Scan
+          </button>
         </div>
 
         <div className={styles.formGroup}>
           <label htmlFor="targetUrls">
-            <span className={styles.formLabel}>Target URL List</span>
+            <span className={styles.formLabel}>Target URLs/IP Addresses</span>
             <span className={styles.formHint}>Enter one per line</span>
           </label>
           <textarea
             id="targetUrls"
-            placeholder="e.g., http://example.com"
+            placeholder="e.g., http://example.com&#10;https://test.example.org"
             value={targetUrlsInput}
             onChange={(e) => setTargetUrlsInput(e.target.value)}
             rows="3"
             className={styles.formControl}
+            required
           />
         </div>
 
-        <div className={styles.formGroup}>
-          <label htmlFor="sessionCookies">
-            <span className={styles.formLabel}>Session Cookies (Optional)</span>
-            <span className={styles.formHint}>
-              E.g., cookie1=value1; cookie2=value2
-            </span>
-          </label>
-          <textarea
-            id="sessionCookies"
-            placeholder="Enter session cookies as a string (e.g., PHPSESSID=abc; user_token=xyz)"
-            value={sessionCookies}
-            onChange={(e) => setSessionCookies(e.target.value)}
-            className={styles.formControl}
-            rows="3"
-          />
-        </div>
-
-        <div className={styles.formRow}>
+        <div className={styles.formOptionsGrid}>
           <div className={styles.formGroup}>
-            <label htmlFor="scanMode">
-              <span className={styles.formLabel}>Scan Mode</span>
+            <label htmlFor="mode" className={styles.formLabel}>
+              Scan Mode
             </label>
             <select
-              id="scanMode"
+              id="mode"
               value={mode}
               onChange={(e) => setMode(e.target.value)}
               className={styles.formControl}
             >
               <option value="normal">Normal</option>
-              <option value="darkweb">Darkweb (.onion)</option>
+              <option value="darkweb">Dark Web (via TOR)</option>
             </select>
           </div>
 
           <div className={styles.formGroup}>
-            <label htmlFor="maxDepth">
-              <span className={styles.formLabel}>Maximum Crawling Depth</span>
+            <label htmlFor="maxDepth" className={styles.formLabel}>
+              Max Crawling Depth
             </label>
-            <input
+            <select
               id="maxDepth"
-              type="number"
               value={maxDepth}
               onChange={(e) => setMaxDepth(e.target.value)}
-              min="0"
-              max="5"
+              className={styles.formControl}
+            >
+              <option value="0">0 - No Crawling</option>
+              <option value="1">1 - First Level Only</option>
+              <option value="2">2 - Two Levels Deep</option>
+              <option value="3">3 - Three Levels Deep</option>
+              <option value="4">4 - Four Levels Deep</option>
+            </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label htmlFor="sessionCookies" className={styles.formLabel}>
+              Session Cookies (Optional)
+            </label>
+            <input
+              type="text"
+              id="sessionCookies"
+              placeholder="e.g., cookie1=value1; cookie2=value2"
+              value={sessionCookies}
+              onChange={(e) => setSessionCookies(e.target.value)}
               className={styles.formControl}
             />
+            <div className={styles.formHint}>
+              Include session cookies for authenticated scanning
+            </div>
           </div>
 
           <div className={styles.formGroup}>
@@ -170,10 +178,6 @@ const ScanForm = ({ onScan }) => {
             className={styles.formControl}
           />
         </div>
-
-        <button type="submit" className={styles.scanButton}>
-          <span className={styles.icon}>🔍</span> Start Scan
-        </button>
       </form>
     </>
   );
