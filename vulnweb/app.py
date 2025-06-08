@@ -30,8 +30,8 @@ with open(os.path.join(CONFIG_FOLDER, 'settings.conf'), 'w') as f:
 @app.after_request
 def add_custom_headers(response):
     """서버 정보 수집 테스트를 위해 Custom Header 추가"""
-    response.headers['Server'] = 'Test-WebApp/1.0'
-    response.headers['X-Powered-By'] = 'Test-Framework/1.1'
+    response.headers['Server'] = 'TestServer/1.0'
+    response.headers['X-Powered-By'] = 'PHP/7.4.3'
     return response
 
 @app.route('/')
@@ -125,10 +125,20 @@ def list_backup():
     </html>
     """
 
+@app.route('/static/js/script.js')
+def serve_js():
+    response = make_response(open('static/js/main.js').read())
+    response.headers['Content-Type'] = 'application/javascript'
+    return response
+
 # --- 스캐너 제외 기능 테스트용 경로 ---
 @app.route('/secret/')
 def secret_dir():
     return "이곳은 robots.txt에 의해 접근이 제한되어야 합니다.", 200
+
+@app.route('/hidden/') # 예시: /hidden/ 경로 추가
+def hidden_dir_example():
+    return "This is a hidden directory example.", 200
 
 @app.route('/config/')
 def config_dir():
