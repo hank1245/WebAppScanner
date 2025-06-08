@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000"; // 'backend'를 'localhost'로 변경
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 export const scanWebsite = async (
   targetUrls,
@@ -10,7 +10,7 @@ export const scanWebsite = async (
   respectRobotsTxt,
   dictionaryOperations,
   useDefaultDictionary,
-  sessionCookies // ADDED
+  sessionCookies
 ) => {
   const payload = {
     target_urls: targetUrls,
@@ -20,13 +20,12 @@ export const scanWebsite = async (
     respect_robots_txt: respectRobotsTxt,
     dictionary_operations: dictionaryOperations || [],
     use_default_dictionary: useDefaultDictionary,
-    session_cookies_string: sessionCookies || null, // ADDED
+    session_cookies_string: sessionCookies || null,
   };
   const response = await axios.post(`${API_BASE_URL}/scan`, payload);
   return response.data.result;
 };
 
-// 기본 딕셔너리 목록 가져오기 (프론트엔드 상수로 정의)
 export const getDefaultDictionary = () => [
   "admin/",
   "backup/",
@@ -61,9 +60,16 @@ export const getDefaultDictionary = () => [
   "db/",
   "sql/",
   "credentials/",
-  "secret/", // 추가
-  "static/", // 추가
-  // .well-known 경로 추가
+  "secret/",
+  "static/",
+  "hidden/",
   ".well-known/",
   ".well-known/security.txt",
+  ".well-known/assetlinks.json",
+  ".well-known/apple-app-site-association",
+  ".well-known/change-password",
+  ".well-known/dnt-policy.txt",
+  ".well-known/host-meta",
+  ".well-known/openid-configuration",
+  ".well-known/jwks.json",
 ];
