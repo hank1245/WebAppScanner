@@ -61,4 +61,9 @@ export const getDefaultDictionary = () => [
   "db/",
   "sql/",
   "credentials/",
+  "secret/", // 추가
+  "static/", // 추가
+  // .well-known 경로 추가
+  ".well-known/",
+  ".well-known/security.txt",
 ];

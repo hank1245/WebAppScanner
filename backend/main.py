@@ -21,7 +21,9 @@ DEFAULT_DICTIONARY = [
     "public/", "uploads/", "files/", "downloads/", "data/", "config/",
     "private/", "web/", "new/", "archive/", ".git/", ".env/", ".svn/",
     ".htaccess/", ".htpasswd/", ".vscode/", ".idea/", "node_modules/",
-    "vendor/", "build/", "dist/", "out/", "db/", "sql/", "credentials/", "secrets/", "static/", "hidden/"
+    "vendor/", "build/", "dist/", "out/", "db/", "sql/", "credentials/", "secret/", "static/", 
+    ".well-known/",
+    ".well-known/security.txt",
 ]
 
 class DictionaryOperation(BaseModel):
