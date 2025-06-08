@@ -25,21 +25,22 @@ const ResultTable = ({ results }) => {
         const source = info.source || "unknown";
 
         switch (statusFilter) {
-          case "ALL_SUCCESSFUL_AND_API": // 기본 필터: 일반 성공 + JS API 성공
+          case "ALL_SUCCESSFUL_AND_API": // 기본 필터: 일반 성공 + JS API 성공 (base 포함)
             return (
               (statusCodeStr === "200" || statusCodeStr === "403") &&
-              (source !== "js_api" ||
-                (source === "js_api" &&
+              ((source !== "js_api" && source !== "js_api_base") || // Not a JS API source
+                ((source === "js_api" || source === "js_api_base") && // OR is a JS API source and successful
                   (statusCodeStr === "200" || statusCodeStr === "403")))
             );
-          case "FOUND_API_ENDPOINTS": // JS API 소스이고 200 또는 403인 경우
+          case "FOUND_API_ENDPOINTS": // JS API 소스 (base 포함)이고 200 또는 403인 경우
             return (
-              source === "js_api" &&
+              (source === "js_api" || source === "js_api_base") &&
               (statusCodeStr === "200" || statusCodeStr === "403")
             );
           case "ALL_SUCCESSFUL_NO_API": // API 제외한 성공
             return (
               source !== "js_api" &&
+              source !== "js_api_base" &&
               (statusCodeStr === "200" || statusCodeStr === "403")
             );
           case "200":
@@ -58,8 +59,8 @@ const ResultTable = ({ results }) => {
           //     (statusCodeStr === "200" || statusCodeStr === "403") &&
           //     info.source === "js_api"
           //   );
-          case "JS_API_ALL_ATTEMPTED": // JS API 소스의 모든 시도 (404 포함)
-            return source === "js_api";
+          // case "JS_API_ALL_ATTEMPTED": // JS API 소스의 모든 시도 (404 포함) - 삭제됨
+          //   return source === "js_api" || source === "js_api_base";
           default:
             return true;
         }
@@ -169,12 +170,12 @@ const ResultTable = ({ results }) => {
       label: "Found Directories (200, 403, No APIs)",
     },
     { value: "ALL", label: "All Attempted Paths" },
-    { value: "200", label: "Status 200 Only" },
-    { value: "403", label: "Status 403 Only" },
-    {
-      value: "JS_API_ALL_ATTEMPTED",
-      label: "All Attempted API Paths (incl. 404)",
-    },
+    // { value: "200", label: "Status 200 Only" }, // 삭제
+    // { value: "403", label: "Status 403 Only" }, // 삭제
+    // {
+    //   value: "JS_API_ALL_ATTEMPTED", // 삭제
+    //   label: "All Attempted API Paths (incl. 404)",
+    // },
     { value: "EXCLUDED", label: "Excluded Paths" },
     { value: "NO_RESPONSE_OR_ERROR", label: "Errors/No Response" },
   ];
@@ -186,7 +187,11 @@ const ResultTable = ({ results }) => {
       case "crawl":
         return "Crawled Page Scan";
       case "js_api":
-        return "JS Discovered API";
+        return "JS API Path";
+      case "js_api_base":
+        return "JS API Base";
+      case "target_base":
+        return "Target Base URL";
       default:
         return source || "Unknown";
     }

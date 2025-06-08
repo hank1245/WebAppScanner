@@ -21,7 +21,7 @@ DEFAULT_DICTIONARY = [
     "public/", "uploads/", "files/", "downloads/", "data/", "config/",
     "private/", "web/", "new/", "archive/", ".git/", ".env/", ".svn/",
     ".htaccess/", ".htpasswd/", ".vscode/", ".idea/", "node_modules/",
-    "vendor/", "build/", "dist/", "out/", "db/", "sql/", "credentials/"
+    "vendor/", "build/", "dist/", "out/", "db/", "sql/", "credentials/", "secrets/", "static/", "hidden/"
 ]
 
 class DictionaryOperation(BaseModel):
@@ -50,10 +50,12 @@ async def scan(request: ScanRequest):
     if request.dictionary_operations:
         current_dict_set = set(final_dictionary)
         for op in request.dictionary_operations:
-            if op.action == "add":
-                current_dict_set.add(op.item)
-            elif op.action == "remove":
-                current_dict_set.discard(op.item)
+            if op.type == "add":
+                for path in op.paths:
+                    current_dict_set.add(path)
+            elif op.type == "remove":
+                for path in op.paths:
+                    current_dict_set.discard(path)
         final_dictionary = sorted(list(current_dict_set))
     
     # 빈 딕셔너리인 경우 기본값 사용 (이중 확인)
